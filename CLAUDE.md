@@ -50,5 +50,5 @@
 - 测试地址：`http://jili.8.130.182.148.nip.io`
 - 内部端口：`3006`
 - PM2 进程：`jili-demo`
-- 发版命令：服务器执行 `bash /root/0719jili/deploy/deploy-test.sh`
+- 发版命令：本地执行 `bash deploy/push-test.sh`（Git 归档 + SCP + 服务器构建）
 - 禁止覆盖或复用服务器上现有的 `lims-next`、`npi-demo`、`guanwu-system` 等目录与进程。

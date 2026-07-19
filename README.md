@@ -52,6 +52,7 @@ npm run e2e
 - 服务器目录：`/root/0719jili`
 - PM2 进程：`jili-demo`
 - 内部端口：`3006`
-- 部署脚本：`deploy/deploy-test.sh`
+- 本地一键发布：`bash deploy/push-test.sh`
+- 服务器构建脚本：`deploy/deploy-test.sh`
 
 产品范围与需求证据见 [docs/PRD.md](docs/PRD.md) 和 [docs/REQUIREMENTS-ANALYSIS.md](docs/REQUIREMENTS-ANALYSIS.md)。

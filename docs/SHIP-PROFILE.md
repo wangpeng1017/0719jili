@@ -17,12 +17,12 @@
 
 ## 测试环境
 
-- 部署命令：`ssh 8.130.182.148 'bash /root/0719jili/deploy/deploy-test.sh'`
+- 部署命令：本地执行 `bash deploy/push-test.sh`
 - 地址：`http://jili.8.130.182.148.nip.io`
 - 服务器目录：`/root/0719jili`
 - PM2：`jili-demo`，内部端口 `3006`
 - 冒烟方式：先 `curl http://127.0.0.1:3006/dashboard`，再从公网地址走驾驶舱→项目详情→评审→排产→工位→质量→一车一档
-- 部署文档：`deploy/deploy-test.sh`、`deploy/nginx-jili-demo.conf`
+- 部署文档：`deploy/push-test.sh`、`deploy/deploy-test.sh`、`deploy/nginx-jili-demo.conf`
 
 ## 生产环境
 

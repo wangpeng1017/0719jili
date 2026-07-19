@@ -2,16 +2,8 @@
 set -euo pipefail
 
 APP_DIR=/root/0719jili
-REPO_URL=https://github.com/wangpeng1017/0719jili.git
-
-if [ ! -d "$APP_DIR/.git" ]; then
-  git clone "$REPO_URL" "$APP_DIR"
-fi
 
 cd "$APP_DIR"
-git fetch origin main
-git checkout main
-git pull --ff-only origin main
 
 npm ci
 npm test
