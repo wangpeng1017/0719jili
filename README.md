@@ -48,11 +48,11 @@ npm run e2e
 
 ## 测试环境
 
-- 地址：`http://jili.8.130.182.148.nip.io`
+- 地址：`https://word.linklike.com.cn/jili/dashboard`
 - 服务器目录：`/root/0719jili`
 - PM2 进程：`jili-demo`
 - 内部端口：`3006`
 - 本地一键发布：`bash deploy/push-test.sh`
-- 服务器构建脚本：`deploy/deploy-test.sh`
+- 服务器构建脚本：`deploy/deploy-test.sh`（自动备份并补充 `/jili/` Nginx location）
 
 产品范围与需求证据见 [docs/PRD.md](docs/PRD.md) 和 [docs/REQUIREMENTS-ANALYSIS.md](docs/REQUIREMENTS-ANALYSIS.md)。

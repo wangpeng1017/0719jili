@@ -12,6 +12,12 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: "3006",
+        NEXT_PUBLIC_BASE_PATH: "/jili",
+      },
+      env_production: {
+        NODE_ENV: "production",
+        PORT: "3006",
+        NEXT_PUBLIC_BASE_PATH: "/jili",
       },
     },
   ],
