@@ -48,11 +48,13 @@ npm run e2e
 
 ## 测试环境
 
-- 地址：`https://word.linklike.com.cn/jili/dashboard`
+- 地址：`http://word.linklike.com.cn/jili/dashboard`
 - 服务器目录：`/root/0719jili`
 - PM2 进程：`jili-demo`
 - 内部端口：`3006`
 - 本地一键发布：`bash deploy/push-test.sh`
 - 服务器构建脚本：`deploy/deploy-test.sh`（自动备份并补充 `/jili/` Nginx location）
+
+> 当前 HTTPS 证书为服务器既有基础设施，已过期且 Certbot 运行时不可用；测试演示暂走已备案域名的 HTTP `/jili/` 隔离路径。
 
 产品范围与需求证据见 [docs/PRD.md](docs/PRD.md) 和 [docs/REQUIREMENTS-ANALYSIS.md](docs/REQUIREMENTS-ANALYSIS.md)。

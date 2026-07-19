@@ -47,7 +47,7 @@
 
 - 本地目录：`/Users/wangpeng/Downloads/0626 jili`
 - 阿里云测试目录：`/root/0719jili`
-- 测试地址：`https://word.linklike.com.cn/jili/dashboard`
+- 测试地址：`http://word.linklike.com.cn/jili/dashboard`
 - 内部端口：`3006`
 - PM2 进程：`jili-demo`
 - 发版命令：本地执行 `bash deploy/push-test.sh`（Git 归档 + SCP + 服务器构建）

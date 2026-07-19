@@ -18,11 +18,12 @@
 ## 测试环境
 
 - 部署命令：本地执行 `bash deploy/push-test.sh`
-- 地址：`https://word.linklike.com.cn/jili/dashboard`
+- 地址：`http://word.linklike.com.cn/jili/dashboard`
 - 服务器目录：`/root/0719jili`
 - PM2：`jili-demo`，内部端口 `3006`
 - 冒烟方式：先检查 `http://127.0.0.1:3006/jili/dashboard`，再从公网地址走驾驶舱→项目详情→评审→排产→工位→质量→一车一档
 - 部署文档：`deploy/push-test.sh`、`deploy/deploy-test.sh`
+- 已知基础设施风险：`word.linklike.com.cn` 既有 Let's Encrypt 证书已于 2026-06-26 过期；Certbot 依赖的 `/usr/libexec/platform-python3.6` 被置为不可执行，未擅自恢复系统权限。
 
 ## 生产环境
 

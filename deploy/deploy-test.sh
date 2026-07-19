@@ -40,6 +40,42 @@ if ! grep -q "location \^~ /jili/" "$WORD_CONF"; then
   ' "$WORD_CONF" > "$WORD_CONF.tmp"
   mv "$WORD_CONF.tmp" "$WORD_CONF"
 fi
+
+if ! grep -q "# jili-http-bypass" "$WORD_CONF"; then
+  cp -a "$WORD_CONF" "$WORD_CONF.bak.$(date +%Y%m%d%H%M%S)"
+  sed -i '/^[[:space:]]*if (\$host = word\.linklike\.com\.cn) {/,/} # managed by Certbot$/d' "$WORD_CONF"
+  awk '
+    /return 404; # managed by Certbot/ {
+      print "    # jili-http-bypass"
+      print "    location = /jili {"
+      print "        return 301 /jili/;"
+      print "    }"
+      print ""
+      print "    location ^~ /jili/ {"
+      print "        proxy_pass http://127.0.0.1:3006;"
+      print "        proxy_http_version 1.1;"
+      print "        proxy_set_header Host $host;"
+      print "        proxy_set_header X-Real-IP $remote_addr;"
+      print "        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;"
+      print "        proxy_set_header X-Forwarded-Proto $scheme;"
+      print "        proxy_set_header Upgrade $http_upgrade;"
+      print "        proxy_set_header Connection \"upgrade\";"
+      print "        proxy_read_timeout 120s;"
+      print "    }"
+      print ""
+      print "    location / {"
+      print "        return 301 https://$host$request_uri;"
+      print "    }"
+      next
+    }
+    { print }
+  ' "$WORD_CONF" > "$WORD_CONF.tmp"
+  mv "$WORD_CONF.tmp" "$WORD_CONF"
+fi
+
+if test -f /etc/nginx/conf.d/jili-demo.conf; then
+  mv /etc/nginx/conf.d/jili-demo.conf "/etc/nginx/conf.d/jili-demo.conf.disabled.$(date +%Y%m%d%H%M%S)"
+fi
 nginx -t
 systemctl reload nginx
 
@@ -59,4 +95,4 @@ for (let attempt = 1; attempt <= 20; attempt += 1) {
 console.error("local smoke failed: dashboard was not ready");
 process.exit(1);
 NODE
-echo "jili-demo deployed: https://word.linklike.com.cn/jili/dashboard"
+echo "jili-demo deployed: http://word.linklike.com.cn/jili/dashboard"
