@@ -9,6 +9,12 @@ npm ci
 npm test
 npm run typecheck
 NEXT_PUBLIC_BASE_PATH=/jili npm run build
+mkdir -p .next/standalone/.next/static
+cp -a .next/static/. .next/standalone/.next/static/
+if test -d public; then
+  mkdir -p .next/standalone/public
+  cp -a public/. .next/standalone/public/
+fi
 
 pm2 startOrReload ecosystem.config.js --env production
 pm2 save

@@ -3,8 +3,7 @@ module.exports = {
     {
       name: "jili-demo",
       cwd: "/root/0719jili",
-      script: "node_modules/next/dist/bin/next",
-      args: "start -p 3006",
+      script: ".next/standalone/server.js",
       instances: 1,
       exec_mode: "fork",
       autorestart: true,
@@ -12,11 +11,13 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: "3006",
+        HOSTNAME: "0.0.0.0",
         NEXT_PUBLIC_BASE_PATH: "/jili",
       },
       env_production: {
         NODE_ENV: "production",
         PORT: "3006",
+        HOSTNAME: "0.0.0.0",
         NEXT_PUBLIC_BASE_PATH: "/jili",
       },
     },
