@@ -1,0 +1,18 @@
+module.exports = {
+  apps: [
+    {
+      name: "jili-demo",
+      cwd: "/root/0719jili",
+      script: "node_modules/next/dist/bin/next",
+      args: "start -p 3006",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      max_memory_restart: "700M",
+      env: {
+        NODE_ENV: "production",
+        PORT: "3006",
+      },
+    },
+  ],
+};

@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  name      String
+  role      String
+  dept      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RetrofitProject {
+  id              String            @id @default(cuid())
+  projectNo       String            @unique
+  wbsNo           String
+  name            String
+  type            String
+  priority        String            @default("normal")
+  owner           String
+  requestedAt     DateTime
+  promisedAt      DateTime?
+  status          String            @default("preparing")
+  progress        Int               @default(0)
+  sourceSystem    String            @default("TOCC")
+  sourceVersion   String?
+  vehicles        Vehicle[]
+  tasks           RetrofitTask[]
+  solutionVersions SolutionVersion[]
+  qualityIssues   QualityIssue[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model Vehicle {
+  id             String          @id @default(cuid())
+  vehicleUid     String          @unique
+  vin            String?         @unique
+  prototypeNo    String?
+  toccVehicleId  String?
+  model          String
+  configuration  String?
+  source         String
+  status         String
+  location       String?
+  projectId      String?
+  project        RetrofitProject? @relation(fields: [projectId], references: [id])
+  tasks          RetrofitTask[]
+  traceEvents    PartTraceEvent[]
+  qualityIssues  QualityIssue[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model RetrofitTask {
+  id              String           @id @default(cuid())
+  taskNo          String           @unique
+  projectId       String
+  project         RetrofitProject  @relation(fields: [projectId], references: [id])
+  vehicleId       String
+  vehicle         Vehicle          @relation(fields: [vehicleId], references: [id])
+  taskType        String
+  stage           String
+  status          String
+  workshop        String?
+  team            String?
+  workstation     String?
+  liftCode        String?
+  plannedStart    DateTime?
+  plannedEnd      DateTime?
+  actualStart     DateTime?
+  actualEnd       DateTime?
+  solutionVersion String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model SolutionVersion {
+  id            String           @id @default(cuid())
+  projectId     String
+  project       RetrofitProject  @relation(fields: [projectId], references: [id])
+  version       String
+  status        String
+  author        String
+  reviewRate    Int              @default(0)
+  openComments  Int              @default(0)
+  frozenAt      DateTime?
+  createdAt     DateTime         @default(now())
+  @@unique([projectId, version])
+}
+
+model MaterialRequirement {
+  id           String   @id @default(cuid())
+  taskNo       String
+  vehicleUid   String?
+  materialCode String
+  materialName String
+  materialType String
+  requiredQty  Decimal  @db.Decimal(12, 3)
+  readyQty     Decimal  @db.Decimal(12, 3)
+  readiness    Int      @default(0)
+  eta          DateTime?
+  sourceSystem String?
+  status       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PartTraceEvent {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  partCode    String
+  serialNo    String?
+  containerNo String?
+  action      String
+  disposition String?
+  operator    String
+  occurredAt  DateTime @default(now())
+}
+
+model QualityIssue {
+  id          String           @id @default(cuid())
+  issueNo     String           @unique
+  projectId   String
+  project     RetrofitProject  @relation(fields: [projectId], references: [id])
+  vehicleId   String?
+  vehicle     Vehicle?         @relation(fields: [vehicleId], references: [id])
+  category    String
+  title       String
+  severity    String
+  status      String
+  owner       String
+  dueAt       DateTime?
+  rootCause   String?          @db.Text
+  action      String?          @db.Text
+  verifiedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model IntegrationLog {
+  id           String   @id @default(cuid())
+  system       String
+  interfaceKey String
+  direction    String
+  businessKey  String?
+  status       String
+  message      String?  @db.Text
+  retryCount   Int      @default(0)
+  occurredAt   DateTime @default(now())
+}
+

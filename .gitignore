@@ -1,0 +1,44 @@
+.DS_Store
+**/.DS_Store
+
+# Office temporary lock files
+~$*.docx
+~$*.pptx
+~$*.xlsx
+
+# Python cache and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Rebuildable intermediate artifacts
+work/
+
+# Historical customer delivery binaries are retained locally, not in the code repository
+/交付文件/
+/geely-retrofit-digital-solution_ppt169_20260626/
+/jili-v11-pptmaster-fix_ppt169_20260707/
+
+# Generated PPT/SVG snapshots and version backups (source/final assets remain tracked)
+**/backup/
+**/chrome_check/
+**/preview_check/
+**/render_check/
+**/exports/
+**/svg_output/
+
+# Next.js / Node.js
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+artifacts/
+*.tsbuildinfo
+
+# Local configuration
+.env
+.env.*
+!.env.example
