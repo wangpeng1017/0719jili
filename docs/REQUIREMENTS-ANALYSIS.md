@@ -125,9 +125,9 @@ flowchart LR
 
 ### 8.4 技术栈冲突
 
-招标技术要求书指定 Vue 3 + Vite 3 + Pinia + Element Plus、Spring Boot 3.5 + Spring Security；本次汇报版按用户要求参考 LIMS-Next，采用 Next.js 15 + React 18 + TypeScript + Ant Design。
+招标技术要求书指定 Vue 3 + Vite 3 + Pinia + Element Plus、Spring Boot 3.5 + Spring Security；本项目参考 LIMS-Next，采用 Next.js 15 + React 18 + TypeScript + Ant Design。
 
-必须明确：汇报版技术栈服务于快速验证业务与交互，不自动代表最终投标承诺。正式实施前需要书面确认技术栈是否为强制条款。
+**已确认（2026-07-21）：招标指定技术栈为可协商条款，允许等价技术栈。** 因此当前 Next.js 全栈架构可作为正式交付基础继续演进，无需按指定栈重建。后续仅需在合同/技术协议中书面固化“等价技术栈”这一约定。
 
 ## 9. 下周汇报版范围取舍
 

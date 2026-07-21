@@ -12,6 +12,7 @@ import {
   MenuFoldOutlined,
   MenuOutlined,
   MenuUnfoldOutlined,
+  PartitionOutlined,
   ProjectOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
@@ -26,14 +27,35 @@ import { useDemoStore } from "@/lib/demo-store";
 
 const { Sider, Content } = Layout;
 
-const navigation = [
+type NavLeaf = { key: string; label: string };
+type NavItem = { key: string; icon: React.ReactNode; label: string; children?: NavLeaf[] };
+
+const navigation: NavItem[] = [
   { key: "/dashboard", icon: <DashboardOutlined />, label: "管理驾驶舱" },
   { key: "/projects", icon: <ProjectOutlined />, label: "项目与任务" },
   { key: "/review", icon: <AuditOutlined />, label: "方案评审" },
   { key: "/schedule", icon: <ApartmentOutlined />, label: "计划与排产" },
   { key: "/materials", icon: <AppstoreOutlined />, label: "物料与追溯" },
+  {
+    key: "process-group",
+    icon: <PartitionOutlined />,
+    label: "工艺工序",
+    children: [
+      { key: "/process", label: "工艺路线" },
+      { key: "/process/sop", label: "作业指导书" },
+      { key: "/production", label: "生产执行" },
+    ],
+  },
   { key: "/workshop", icon: <ToolOutlined />, label: "数字工位" },
-  { key: "/quality", icon: <SafetyCertificateOutlined />, label: "质量闭环" },
+  {
+    key: "quality-group",
+    icon: <SafetyCertificateOutlined />,
+    label: "质量管理",
+    children: [
+      { key: "/quality", label: "质量闭环" },
+      { key: "/quality/inspection", label: "质量检验" },
+    ],
+  },
   { key: "/vehicles/VH-7E001", icon: <CarOutlined />, label: "一车一档" },
   { key: "/integrations", icon: <ControlOutlined />, label: "集成中心" },
 ];
@@ -45,15 +67,32 @@ function NavigationMenu({ selectedKey, close }: { selectedKey: string; close?: (
       theme="dark"
       mode="inline"
       selectedKeys={[selectedKey]}
-      items={navigation.map((item) => ({
-        key: item.key,
-        icon: item.icon,
-        label: (
-          <Link href={item.key} onClick={close}>
-            {item.label}
-          </Link>
-        ),
-      }))}
+      defaultOpenKeys={["process-group", "quality-group"]}
+      items={navigation.map((item) =>
+        item.children
+          ? {
+              key: item.key,
+              icon: item.icon,
+              label: item.label,
+              children: item.children.map((child) => ({
+                key: child.key,
+                label: (
+                  <Link href={child.key} onClick={close}>
+                    {child.label}
+                  </Link>
+                ),
+              })),
+            }
+          : {
+              key: item.key,
+              icon: item.icon,
+              label: (
+                <Link href={item.key} onClick={close}>
+                  {item.label}
+                </Link>
+              ),
+            }
+      )}
     />
   );
 }
@@ -130,13 +169,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { dispatch } = useDemoStore();
   const { message } = App.useApp();
 
+  const leafKeys = useMemo(() => {
+    const keys: string[] = [];
+    for (const item of navigation) {
+      if (item.children) keys.push(...item.children.map((c) => c.key));
+      else keys.push(item.key);
+    }
+    return keys.sort((a, b) => b.length - a.length);
+  }, []);
+
   const selectedKey = useMemo(() => {
     if (pathname.startsWith("/vehicles")) return "/vehicles/VH-7E001";
     if (pathname.startsWith("/projects")) return "/projects";
-    return navigation.find((item) => pathname.startsWith(item.key))?.key ?? "/dashboard";
-  }, [pathname]);
+    return leafKeys.find((key) => pathname.startsWith(key)) ?? "/dashboard";
+  }, [pathname, leafKeys]);
 
-  const pageName = navigation.find((item) => item.key === selectedKey)?.label ?? "业务工作台";
+  const pageName = useMemo(() => {
+    for (const item of navigation) {
+      if (item.key === selectedKey) return item.label;
+      const child = item.children?.find((c) => c.key === selectedKey);
+      if (child) return child.label;
+    }
+    return "业务工作台";
+  }, [selectedKey]);
 
   return (
     <Layout className="platform-layout">

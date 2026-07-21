@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircleOutlined, ExportOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
-import { App, Button, Col, Descriptions, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag } from "antd";
+import { BranchesOutlined, CheckCircleOutlined, ExportOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { App, Button, Checkbox, Col, Descriptions, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag } from "antd";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
@@ -22,7 +22,22 @@ export default function QualityPage() {
   const [category, setCategory] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<QualityIssue | null>(null);
+  const [deploySource, setDeploySource] = useState<QualityIssue | null>(null);
+  const [deployTargets, setDeployTargets] = useState<string[]>([]);
   const [form] = Form.useForm();
+
+  const prototypeNos = useMemo(() => state.vehicles.map((v) => v.prototypeNo), [state.vehicles]);
+  const deployCandidates = useMemo(
+    () => (deploySource ? prototypeNos.filter((no) => no !== deploySource.vehicle) : []),
+    [prototypeNos, deploySource]
+  );
+  const horizontalGroups = useMemo(() => {
+    const sources = state.qualityIssues.filter((item) => item.horizontal);
+    return sources.map((source) => ({
+      source,
+      linked: state.qualityIssues.filter((item) => item.sourceIssueNo === source.id),
+    }));
+  }, [state.qualityIssues]);
 
   const issues = useMemo(
     () => state.qualityIssues.filter((item) => category === "all" || item.category === category),
@@ -51,6 +66,22 @@ export default function QualityPage() {
     setCreateOpen(false);
   };
 
+  const openDeploy = (issue: QualityIssue) => {
+    setDeployTargets([]);
+    setDeploySource(issue);
+  };
+
+  const confirmDeploy = () => {
+    if (!deploySource) return;
+    if (deployTargets.length === 0) {
+      message.warning("请至少选择一台横展目标车辆");
+      return;
+    }
+    dispatch({ type: "HORIZONTAL_DEPLOY", payload: { id: deploySource.id, vehicles: deployTargets } });
+    message.success(`${deploySource.id} 已横展至同批 ${deployTargets.length} 台车`);
+    setDeploySource(null);
+  };
+
   return (
     <>
       <PageHeader
@@ -76,16 +107,46 @@ export default function QualityPage() {
           scroll={{ x: 1080 }}
           columns={[
             { title: "问题编号", dataIndex: "id", key: "id", width: 150, render: (value) => <span style={{ color: "#0b4f91", fontFamily: "Fira Code, monospace", fontSize: 12 }}>{value}</span> },
-            { title: "问题描述", key: "title", width: 270, render: (_, record) => <div><b>{record.title}</b><div style={{ marginTop: 4, color: "#718096", fontSize: 11 }}>{record.vehicle}</div></div> },
+            { title: "问题描述", key: "title", width: 270, render: (_, record) => <div><b>{record.title}</b><div style={{ marginTop: 4, color: "#718096", fontSize: 11, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>{record.vehicle}{record.horizontal && <Tag color="gold" style={{ marginInlineEnd: 0 }}>已横展</Tag>}{record.sourceIssueNo && <Tag color="purple" style={{ marginInlineEnd: 0 }}>横展自 {record.sourceIssueNo}</Tag>}</div></div> },
             { title: "分类", dataIndex: "category", key: "category", width: 130, render: (value) => <Tag>{value}</Tag> },
             { title: "等级", dataIndex: "severity", key: "severity", width: 70, render: (value) => <Tag color={value === "高" ? "red" : "gold"}>{value}</Tag> },
             { title: "责任人", dataIndex: "owner", key: "owner", width: 100 },
             { title: "截止", dataIndex: "due", key: "due", width: 100 },
             { title: "整改/复验", dataIndex: "action", key: "action", width: 280 },
             { title: "状态", dataIndex: "status", key: "status", width: 100, render: (value) => <StatusPill status={value} /> },
-            { title: "操作", key: "actionButton", fixed: "right", width: 110, render: (_, record) => record.status === "verifying" ? <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => verify(record.id)}>复验通过</Button> : <Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => setDetail(record)}>查看</Button> },
+            { title: "操作", key: "actionButton", fixed: "right", width: 190, render: (_, record) => <Space size={6}>{record.status === "verifying" && <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => verify(record.id)}>复验通过</Button>}{!record.sourceIssueNo && record.status !== "closed" && <Button size="small" icon={<BranchesOutlined />} onClick={() => openDeploy(record)}>横展</Button>}<Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => setDetail(record)}>查看</Button></Space> },
           ]}
         />
+      </SurfaceCard>
+
+      <div style={{ height: 14 }} />
+
+      <SurfaceCard title="横展清单" subtitle="同源质量问题向同批次车辆横向展开，逐车自查关闭，避免同类问题重复发生">
+        {horizontalGroups.length === 0 ? (
+          <Empty description="暂无横展记录，对问题点击「横展」可向同批车辆展开" />
+        ) : (
+          <Space direction="vertical" size={12} style={{ width: "100%" }}>
+            {horizontalGroups.map(({ source, linked }) => (
+              <div key={source.id} style={{ border: "1px solid #e6ebf2", borderRadius: 10, padding: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                  <BranchesOutlined style={{ color: "#d69e2e" }} />
+                  <b>{source.id}</b>
+                  <span style={{ color: "#5b6b7f" }}>{source.title}</span>
+                  <Tag color="gold" style={{ marginInlineEnd: 0 }}>已横展 {linked.length} 台</Tag>
+                </div>
+                {linked.length === 0 ? (
+                  <div style={{ color: "#a0aec0", fontSize: 12 }}>暂无横展子项</div>
+                ) : (
+                  <Space size={[8, 8]} wrap>
+                    {linked.map((item) => (
+                      <Tag key={item.id} color="purple" style={{ marginInlineEnd: 0 }}>{item.vehicle} · {item.id} · <StatusPill status={item.status} /></Tag>
+                    ))}
+                  </Space>
+                )}
+              </div>
+            ))}
+          </Space>
+        )}
       </SurfaceCard>
 
       <Modal title="新建质量问题" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={submitCreate} okText="创建" cancelText="取消">
@@ -126,6 +187,24 @@ export default function QualityPage() {
             { key: "action", label: "整改/复验", children: detail.action },
             { key: "status", label: "状态", children: <StatusPill status={detail.status} /> },
           ]} />
+        )}
+      </Modal>
+
+      <Modal
+        title={`质量横展 · ${deploySource?.id ?? ""}`}
+        open={Boolean(deploySource)}
+        onCancel={() => setDeploySource(null)}
+        onOk={confirmDeploy}
+        okText="确认横展"
+        cancelText="取消"
+      >
+        {deploySource && (
+          <Space direction="vertical" size={12} style={{ width: "100%" }}>
+            <div style={{ color: "#5b6b7f" }}>{deploySource.title}（{deploySource.vehicle}）将作为同源问题向以下同批次车辆横向展开自查。</div>
+            <div style={{ marginBottom: 6 }}>选择横展目标车辆</div>
+            <Checkbox.Group value={deployTargets} onChange={(values) => setDeployTargets(values as string[])} options={deployCandidates.map((no) => ({ value: no, label: no }))} style={{ display: "flex", flexDirection: "column", gap: 8 }} />
+            {deployCandidates.length === 0 && <div style={{ color: "#a0aec0", fontSize: 12 }}>无其他可横展车辆</div>}
+          </Space>
         )}
       </Modal>
     </>

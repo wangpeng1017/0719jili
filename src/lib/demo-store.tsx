@@ -3,16 +3,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import {
   gates as initialGates,
+  inspectionRecords as initialInspectionRecords,
+  inspectionTemplates as initialInspectionTemplates,
   integrationSystems as initialIntegrationSystems,
   mainProjectId,
   mainVehicleId,
   materials as initialMaterials,
+  processRoutes as initialProcessRoutes,
   projects as initialProjects,
   qualityIssues as initialQualityIssues,
   reviewPages as initialReviewPages,
   scheduleRows as initialScheduleRows,
   vehicleTimeline as initialVehicleTimeline,
   vehicles as initialVehicles,
+  workReports as initialWorkReports,
 } from "@/lib/demo-data";
 import { readinessLevel } from "@/lib/status";
 
@@ -26,6 +30,13 @@ export type MaterialItem = (typeof initialMaterials)[number];
 export type QualityIssue = (typeof initialQualityIssues)[number];
 export type IntegrationSystem = (typeof initialIntegrationSystems)[number];
 export type TimelineItem = (typeof initialVehicleTimeline)[number];
+
+export type WorkInstructionItem = (typeof initialProcessRoutes)[number]["operations"][number]["instructions"][number];
+export type OperationItem = (typeof initialProcessRoutes)[number]["operations"][number];
+export type ProcessRoute = (typeof initialProcessRoutes)[number];
+export type WorkReport = (typeof initialWorkReports)[number];
+export type InspectionTemplate = (typeof initialInspectionTemplates)[number];
+export type InspectionRecord = (typeof initialInspectionRecords)[number];
 
 export type WorkLog = { time: string; title: string; detail: string };
 
@@ -76,6 +87,10 @@ export type DemoState = {
   checkpointsTotal: number;
   scanCount: number;
   workLogs: WorkLog[];
+  processRoutes: ProcessRoute[];
+  workReports: WorkReport[];
+  inspectionTemplates: InspectionTemplate[];
+  inspectionRecords: InspectionRecord[];
 };
 
 export function buildInitialState(): DemoState {
@@ -102,6 +117,13 @@ export function buildInitialState(): DemoState {
       { time: "13:56", title: "异常反馈", detail: "孔位偏差 1.8mm，生成 QI-2026-0718-03" },
       { time: "10:12", title: "扫码装车", detail: "线束 SN-LR-260718-01 绑定车辆" },
     ],
+    processRoutes: initialProcessRoutes.map((route) => ({
+      ...route,
+      operations: route.operations.map((op) => ({ ...op, instructions: op.instructions.map((wi) => ({ ...wi })) })),
+    })),
+    workReports: initialWorkReports.map((item) => ({ ...item })),
+    inspectionTemplates: initialInspectionTemplates.map((item) => ({ ...item, items: item.items.map((i) => ({ ...i })) })),
+    inspectionRecords: initialInspectionRecords.map((item) => ({ ...item, items: item.items.map((i) => ({ ...i })) })),
   };
 }
 
@@ -127,6 +149,14 @@ export type DemoAction =
   | { type: "SCAN_PART" }
   | { type: "REPORT_PROGRESS" }
   | { type: "QC_CHECKPOINT" }
+  | { type: "START_OPERATION"; payload: { routeId: string; opId: string } }
+  | { type: "COMPLETE_OPERATION"; payload: { routeId: string; opId: string } }
+  | { type: "DISPATCH_OPERATION"; payload: { routeId: string; opId: string; assignee: string } }
+  | { type: "PAUSE_OPERATION"; payload: { routeId: string; opId: string } }
+  | { type: "RESUME_OPERATION"; payload: { routeId: string; opId: string } }
+  | { type: "REPORT_OPERATION"; payload: { routeId: string; opId: string; operator: string; measured: string; result: string; note: string } }
+  | { type: "SUBMIT_INSPECTION"; payload: { templateId: string; vehicleId: string; inspector: string; result: string; items: { seq: number; checkPoint: string; spec: string; measured: string; judged: string }[] } }
+  | { type: "HORIZONTAL_DEPLOY"; payload: { id: string; vehicles: string[] } }
   | { type: "TOGGLE_PAUSE" }
   | { type: "RETRY_INTEGRATION"; time: string; business: string }
   | { type: "HEALTH_CHECK" };
@@ -209,6 +239,8 @@ export function reducer(state: DemoState, action: DemoAction): DemoState {
         due: action.payload.due,
         status: "rectifying",
         action: action.payload.action,
+        horizontal: false,
+        sourceIssueNo: "",
       };
       return {
         ...state,
@@ -296,6 +328,180 @@ export function reducer(state: DemoState, action: DemoAction): DemoState {
     case "QC_CHECKPOINT": {
       if (state.workshopPaused || state.checkpointsDone >= state.checkpointsTotal) return state;
       return { ...state, checkpointsDone: state.checkpointsDone + 1 };
+    }
+
+    case "START_OPERATION": {
+      const { routeId, opId } = action.payload;
+      return {
+        ...state,
+        processRoutes: state.processRoutes.map((route) =>
+          route.id !== routeId
+            ? route
+            : {
+                ...route,
+                operations: route.operations.map((op) =>
+                  op.id === opId && (op.status === "pending" || op.status === "dispatched")
+                    ? { ...op, status: "in_progress", startedAt: op.startedAt || new Date().toISOString() }
+                    : op
+                ),
+              }
+        ),
+        workLogs: [{ time: nowLabel(), title: "工序开工", detail: `${opId} 开始作业` }, ...state.workLogs],
+      };
+    }
+
+    case "COMPLETE_OPERATION": {
+      const { routeId, opId } = action.payload;
+      const route = state.processRoutes.find((item) => item.id === routeId);
+      const op = route?.operations.find((item) => item.id === opId);
+      if (!op || op.status === "completed") return state;
+      return {
+        ...state,
+        processRoutes: state.processRoutes.map((item) =>
+          item.id !== routeId
+            ? item
+            : {
+                ...item,
+                operations: item.operations.map((o) => (o.id === opId ? { ...o, status: "completed", finishedAt: new Date().toISOString() } : o)),
+              }
+        ),
+        workLogs: [{ time: nowLabel(), title: "工序报工", detail: `${op.name}（${opId}）完成并转序，SOP 步骤全部确认` }, ...state.workLogs],
+        vehicleTimeline: pushTimeline(state, { title: `工序完成 ${opId}`, detail: `${op.name} 完成，作业记录存入一车一档`, color: "green" }),
+      };
+    }
+
+    case "DISPATCH_OPERATION": {
+      const { routeId, opId, assignee } = action.payload;
+      const route = state.processRoutes.find((item) => item.id === routeId);
+      const op = route?.operations.find((item) => item.id === opId);
+      if (!op || op.status !== "pending") return state;
+      return {
+        ...state,
+        processRoutes: state.processRoutes.map((item) =>
+          item.id !== routeId
+            ? item
+            : { ...item, operations: item.operations.map((o) => (o.id === opId ? { ...o, status: "dispatched", assignee } : o)) }
+        ),
+        workLogs: [{ time: nowLabel(), title: "工序派工", detail: `${op.name}（${opId}）已派工至 ${assignee}` }, ...state.workLogs],
+      };
+    }
+
+    case "PAUSE_OPERATION": {
+      const { routeId, opId } = action.payload;
+      const route = state.processRoutes.find((item) => item.id === routeId);
+      const op = route?.operations.find((item) => item.id === opId);
+      if (!op || op.status !== "in_progress") return state;
+      return {
+        ...state,
+        processRoutes: state.processRoutes.map((item) =>
+          item.id !== routeId
+            ? item
+            : { ...item, operations: item.operations.map((o) => (o.id === opId ? { ...o, status: "paused" } : o)) }
+        ),
+        workLogs: [{ time: nowLabel(), title: "工序暂停", detail: `${op.name}（${opId}）已暂停，资源待释放` }, ...state.workLogs],
+      };
+    }
+
+    case "RESUME_OPERATION": {
+      const { routeId, opId } = action.payload;
+      const route = state.processRoutes.find((item) => item.id === routeId);
+      const op = route?.operations.find((item) => item.id === opId);
+      if (!op || op.status !== "paused") return state;
+      return {
+        ...state,
+        processRoutes: state.processRoutes.map((item) =>
+          item.id !== routeId
+            ? item
+            : { ...item, operations: item.operations.map((o) => (o.id === opId ? { ...o, status: "in_progress" } : o)) }
+        ),
+        workLogs: [{ time: nowLabel(), title: "工序恢复", detail: `${op.name}（${opId}）恢复作业` }, ...state.workLogs],
+      };
+    }
+
+    case "REPORT_OPERATION": {
+      const { routeId, opId, operator, measured, result, note } = action.payload;
+      const route = state.processRoutes.find((item) => item.id === routeId);
+      const op = route?.operations.find((item) => item.id === opId);
+      if (!op || op.status === "completed") return state;
+      const report: WorkReport = {
+        id: `WR-${Date.now()}`,
+        opNo: opId,
+        routeNo: routeId,
+        vehicleId: mainVehicleId,
+        operator,
+        measured,
+        result,
+        note,
+        reportedAt: new Date().toISOString(),
+      };
+      const measuredText = measured ? `，实测 ${measured}` : "";
+      return {
+        ...state,
+        workReports: [report, ...state.workReports],
+        processRoutes: state.processRoutes.map((item) =>
+          item.id !== routeId
+            ? item
+            : {
+                ...item,
+                operations: item.operations.map((o) =>
+                  o.id === opId
+                    ? { ...o, status: "completed", assignee: operator, finishedAt: new Date().toISOString(), startedAt: o.startedAt || new Date().toISOString() }
+                    : o
+                ),
+              }
+        ),
+        workLogs: [{ time: nowLabel(), title: "工序结构化报工", detail: `${op.name}（${opId}）完成，操作人 ${operator}${measuredText}，结果 ${result === "failed" ? "不合格" : "合格"}` }, ...state.workLogs],
+        vehicleTimeline: pushTimeline(state, { title: `工序报工 ${opId}`, detail: `${op.name} 完成并转序，操作人 ${operator}${measuredText}，记录存入一车一档`, color: result === "failed" ? "red" : "green" }),
+      };
+    }
+
+    case "SUBMIT_INSPECTION": {
+      const { templateId, vehicleId, inspector, result, items } = action.payload;
+      const template = state.inspectionTemplates.find((item) => item.id === templateId);
+      if (!template) return state;
+      const passed = result !== "failed";
+      const record: InspectionRecord = {
+        id: `IR-${Date.now()}`,
+        templateNo: templateId,
+        vehicleId,
+        inspector,
+        result,
+        inspectedAt: new Date().toISOString(),
+        items: items.map((item) => ({ ...item })),
+      };
+      return {
+        ...state,
+        inspectionRecords: [record, ...state.inspectionRecords],
+        workLogs: [{ time: nowLabel(), title: "结构化质量检验", detail: `${template.name} 检验${passed ? "合格" : "不合格"}，检验人 ${inspector}` }, ...state.workLogs],
+        vehicleTimeline: pushTimeline(state, { title: `质量检验 ${templateId}`, detail: `${template.name} 检验${passed ? "合格" : "不合格"}，检验人 ${inspector}，记录存入一车一档`, color: passed ? "green" : "red" }),
+      };
+    }
+
+    case "HORIZONTAL_DEPLOY": {
+      const { id, vehicles } = action.payload;
+      const source = state.qualityIssues.find((item) => item.id === id);
+      if (!source) return state;
+      const linked: QualityIssue[] = vehicles.map((prototypeNo, index) => ({
+        id: `${id}-HX${index + 1}`,
+        title: `${source.title}（横展）`,
+        category: source.category,
+        vehicle: prototypeNo,
+        severity: source.severity,
+        owner: source.owner,
+        due: "07-20",
+        status: "rectifying",
+        action: "横展自查：同批次复检并记录",
+        horizontal: false,
+        sourceIssueNo: id,
+      }));
+      return {
+        ...state,
+        qualityIssues: [
+          ...state.qualityIssues.map((item) => (item.id === id ? { ...item, horizontal: true } : item)),
+          ...linked,
+        ],
+        vehicleTimeline: pushTimeline(state, { title: `质量问题 ${id} 横展`, detail: `已横展至同批 ${vehicles.length} 台车（${vehicles.join("、")}），等待各车自查关闭`, color: "gold" }),
+      };
     }
 
     case "TOGGLE_PAUSE": {

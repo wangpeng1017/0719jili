@@ -86,7 +86,7 @@ flowchart LR
 
 - 汇报演示版参考 LIMS-Next：Next.js 15 App Router + React 18 + TypeScript + Ant Design 5。
 - 目标数据层采用 Prisma + MySQL；当前版先使用前端一致性演示数据，降低下周汇报风险。
-- 招标技术要求书提出 Vue 3 + Spring Boot 3.5。正式投标/交付前需与客户确认：是否严格按招标指定栈实施，或允许等价技术栈。
+- 招标技术要求书提出 Vue 3 + Spring Boot 3.5。**已确认（2026-07-21）技术栈为可协商条款，允许等价技术栈**，故当前 Next.js 全栈架构作为正式交付基础继续演进，仅需在合同中书面固化该约定。
 
 ## 六、变更历史
 

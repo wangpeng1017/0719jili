@@ -40,6 +40,7 @@ model RetrofitProject {
   tasks            RetrofitTask[]
   solutionVersions SolutionVersion[]
   qualityIssues    QualityIssue[]
+  processRoutes    ProcessRoute[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 }
@@ -104,6 +105,114 @@ model SolutionVersion {
   @@unique([projectId, version])
 }
 
+model ProcessRoute {
+  id         String          @id @default(cuid())
+  routeNo    String          @unique
+  projectId  String
+  project    RetrofitProject @relation(fields: [projectId], references: [id])
+  stage      String
+  name       String
+  version    String
+  status     String          @default("draft")
+  author     String
+  operations Operation[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+}
+
+model Operation {
+  id              String          @id @default(cuid())
+  opNo            String          @unique
+  routeId         String
+  route           ProcessRoute    @relation(fields: [routeId], references: [id])
+  seq             Int
+  name            String
+  workCenter      String
+  standardMinutes Int             @default(0)
+  isKey           Boolean         @default(false)
+  status          String          @default("pending")
+  assignee        String?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  instructions    WorkInstruction[]
+  reports         WorkReport[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model WorkReport {
+  id          String    @id @default(cuid())
+  operationId String
+  operation   Operation @relation(fields: [operationId], references: [id])
+  opNo        String
+  routeNo     String
+  vehicleId   String
+  operator    String
+  measured    String?
+  result      String    @default("passed")
+  note        String?
+  reportedAt  DateTime  @default(now())
+}
+
+model InspectionTemplate {
+  id         String           @id @default(cuid())
+  templateNo String           @unique
+  name       String
+  opNo       String?
+  status     String           @default("released")
+  author     String
+  items      InspectionItem[]
+  records    InspectionRecord[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+}
+
+model InspectionItem {
+  id         String             @id @default(cuid())
+  templateId String
+  template   InspectionTemplate @relation(fields: [templateId], references: [id])
+  seq        Int
+  checkPoint String
+  method     String?
+  spec       String?
+  createdAt  DateTime           @default(now())
+}
+
+model InspectionRecord {
+  id         String                 @id @default(cuid())
+  templateId String
+  template   InspectionTemplate     @relation(fields: [templateId], references: [id])
+  templateNo String
+  vehicleId  String
+  inspector  String
+  result     String                 @default("passed")
+  inspectedAt DateTime              @default(now())
+  items      InspectionRecordItem[]
+}
+
+model InspectionRecordItem {
+  id         String           @id @default(cuid())
+  recordId   String
+  record     InspectionRecord @relation(fields: [recordId], references: [id])
+  seq        Int
+  checkPoint String
+  spec       String?
+  measured   String?
+  judged     String           @default("passed")
+}
+
+model WorkInstruction {
+  id          String   @id @default(cuid())
+  operationId String
+  operation   Operation @relation(fields: [operationId], references: [id])
+  seq         Int
+  step        String
+  torqueSpec  String?
+  tooling     String?
+  qualityReq  String?
+  createdAt   DateTime @default(now())
+}
+
 model MaterialRequirement {
   id           String   @id @default(cuid())
   taskNo       String
@@ -149,6 +258,8 @@ model QualityIssue {
   dueAt      String?
   rootCause  String?
   action     String?
+  horizontal Boolean          @default(false)
+  sourceIssueNo String?
   verifiedAt DateTime?
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt

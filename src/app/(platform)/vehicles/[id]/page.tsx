@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleFilled, CloseCircleFilled, DownloadOutlined, FileDoneOutlined, QrcodeOutlined } from "@ant-design/icons";
-import { App, Breadcrumb, Button, Col, Descriptions, Modal, Progress, Row, Space, Tabs, Tag, Timeline } from "antd";
+import { App, Breadcrumb, Button, Col, Descriptions, Modal, Progress, Row, Space, Table, Tabs, Tag, Timeline } from "antd";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -21,6 +21,8 @@ export default function VehicleDossierPage() {
 
   const vehicleIssues = state.qualityIssues.filter((item) => item.vehicle === vehicle.prototypeNo);
   const openIssues = vehicleIssues.filter((item) => item.status !== "closed");
+  const vehicleReports = state.workReports.filter((item) => item.vehicleId === vehicle.id);
+  const vehicleInspections = state.inspectionRecords.filter((item) => item.vehicleId === vehicle.id);
   const finalInspectionReady = openIssues.length === 0 && vehicle.progress >= 100;
 
   const exportDossier = () => {
@@ -28,6 +30,8 @@ export default function VehicleDossierPage() {
       generatedAt: new Date().toISOString(),
       车辆主档: vehicle,
       执行方案: state.activeVersion,
+      作业报工: vehicleReports,
+      质量检验: vehicleInspections,
       质量问题: vehicleIssues,
       履历时间轴: state.vehicleTimeline,
     });
@@ -74,6 +78,46 @@ export default function VehicleDossierPage() {
             <Tabs items={[
               { key: "solution", label: "方案与文件", children: <EvidenceList items={[`改制方案 ${state.activeVersion}（${state.versionFrozen ? "冻结版" : "沿用 V3.0 冻结版"}）`, "总装作业指导书 WI-E8-017-V2", "质量检查表 QP-E8-017-V1", "V4.0 变更评审摘要"]} /> },
               { key: "material", label: "物料与拆换件", children: <EvidenceList items={["5 类物料需求与齐套记录", `关键件扫码装车记录 ${state.scanCount} 条`, "拆车件容器 CT-017", "LES 配送与车间接收记录"]} /> },
+              {
+                key: "report",
+                label: `作业报工（${vehicleReports.length}）`,
+                children: (
+                  <Table
+                    rowKey="id"
+                    size="small"
+                    pagination={false}
+                    dataSource={vehicleReports}
+                    locale={{ emptyText: "暂无结构化报工记录" }}
+                    columns={[
+                      { title: "工序号", dataIndex: "opNo", key: "opNo", width: 110 },
+                      { title: "操作人", dataIndex: "operator", key: "operator", width: 90 },
+                      { title: "实测 / 参数", dataIndex: "measured", key: "measured", render: (v: string) => v || "—" },
+                      { title: "结果", dataIndex: "result", key: "result", width: 80, render: (v: string) => (v === "failed" ? <Tag color="red">不合格</Tag> : <Tag color="green">合格</Tag>) },
+                      { title: "报工时间", dataIndex: "reportedAt", key: "reportedAt", width: 150, render: (v: string) => new Date(v).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) },
+                    ]}
+                  />
+                ),
+              },
+              {
+                key: "inspection",
+                label: `质量检验（${vehicleInspections.length}）`,
+                children: (
+                  <Table
+                    rowKey="id"
+                    size="small"
+                    pagination={false}
+                    dataSource={vehicleInspections}
+                    locale={{ emptyText: "暂无结构化质量检验记录" }}
+                    columns={[
+                      { title: "检验规程", dataIndex: "templateNo", key: "templateNo", width: 150, render: (v: string) => <span style={{ color: "#0b4f91", fontFamily: "Fira Code, monospace", fontSize: 12 }}>{v}</span> },
+                      { title: "检验人", dataIndex: "inspector", key: "inspector", width: 90 },
+                      { title: "检查项", key: "count", width: 80, render: (_: unknown, r: { items: unknown[] }) => `${r.items.length} 项` },
+                      { title: "结论", dataIndex: "result", key: "result", width: 80, render: (v: string) => (v === "failed" ? <Tag color="red">不合格</Tag> : <Tag color="green">合格</Tag>) },
+                      { title: "检验时间", dataIndex: "inspectedAt", key: "inspectedAt", width: 150, render: (v: string) => new Date(v).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) },
+                    ]}
+                  />
+                ),
+              },
               {
                 key: "quality",
                 label: "质量与放行",

@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
     case "RESET": {
       // Re-seed: delete mutable data and restore defaults
       await prisma.$transaction(async (tx) => {
+        await tx.inspectionRecordItem.deleteMany();
+        await tx.inspectionRecord.deleteMany();
+        await tx.inspectionItem.deleteMany();
+        await tx.inspectionTemplate.deleteMany();
+        await tx.workReport.deleteMany();
+        await tx.workInstruction.deleteMany();
+        await tx.operation.deleteMany();
+        await tx.processRoute.deleteMany();
         await tx.workLog.deleteMany();
         await tx.vehicleTimelineEvent.deleteMany();
         await tx.scheduleAdjustment.deleteMany();
@@ -46,6 +54,68 @@ export async function POST(req: NextRequest) {
             { id: "VH-7E001", vehicleUid: "GEELY-VH-7E001", vin: "L6T79L2Z9SG000317", prototypeNo: "E8-SM-017-01", model: "银河 E8", configuration: "800V 四驱智驾验证版", source: "TOCC 二期", location: "管理车间 · 举升机 L1", stage: "装配", status: "in_progress", progress: 71, projectId: "PRJ-2026-SM-017" },
             { id: "VH-7E002", vehicleUid: "GEELY-VH-7E002", vin: "L6T79L2Z0SG000318", prototypeNo: "E8-SM-017-02", model: "银河 E8", configuration: "800V 四驱智驾验证版", source: "TOCC 二期", location: "准备车间 · 待上线", stage: "准备确认", status: "scheduled", progress: 35, projectId: "PRJ-2026-SM-017" },
             { id: "VH-7E003", vehicleUid: "GEELY-VH-7E003", vin: "L6T79L2Z2SG000319", prototypeNo: "E8-SM-017-03", model: "银河 E8", configuration: "800V 后驱验证版", source: "TOCC 二期", location: "线边暂存区", stage: "物料等待", status: "blocked", progress: 28, projectId: "PRJ-2026-SM-017" },
+          ],
+        });
+
+        const rZp = await tx.processRoute.create({ data: { routeNo: "GY-E8-017-ZP", projectId: "PRJ-2026-SM-017", stage: "装配", name: "前舱感知支架装配工艺路线", version: "V2.0", status: "frozen", author: "车身工艺 · 张工" } });
+        const rCj = await tx.processRoute.create({ data: { routeNo: "GY-E8-017-CJ", projectId: "PRJ-2026-SM-017", stage: "拆解", name: "前舱拆解工艺路线", version: "V1.0", status: "frozen", author: "总装工艺 · 叶工" } });
+        const rDev = await tx.processRoute.create({ data: { routeNo: "GY-DEV-006-ZP", projectId: "PRJ-2026-DEV-006", stage: "装配", name: "热管理支架装配工艺路线", version: "V0.9", status: "reviewing", author: "零部件工艺 · 单工" } });
+        const oZp10 = await tx.operation.create({ data: { opNo: "OP-ZP-010", routeId: rZp.id, seq: 10, name: "拆卸原车前防撞梁", workCenter: "管理车间 L1", standardMinutes: 45, isKey: false, status: "completed", assignee: "陈师傅", startedAt: new Date("2026-07-18T08:30:00"), finishedAt: new Date("2026-07-18T09:15:00") } });
+        const oZp20 = await tx.operation.create({ data: { opNo: "OP-ZP-020", routeId: rZp.id, seq: 20, name: "安装感知支架总成", workCenter: "管理车间 L1", standardMinutes: 60, isKey: true, status: "in_progress", assignee: "陈师傅", startedAt: new Date("2026-07-18T09:20:00") } });
+        const oZp30 = await tx.operation.create({ data: { opNo: "OP-ZP-030", routeId: rZp.id, seq: 30, name: "激光雷达线束敷设与接插", workCenter: "管理车间 L1", standardMinutes: 50, isKey: true, status: "pending" } });
+        const oZp40 = await tx.operation.create({ data: { opNo: "OP-ZP-040", routeId: rZp.id, seq: 40, name: "扭矩复紧与自检", workCenter: "管理车间 L1", standardMinutes: 30, isKey: false, status: "pending" } });
+        const oCj10 = await tx.operation.create({ data: { opNo: "OP-CJ-010", routeId: rCj.id, seq: 10, name: "举升与安全防护", workCenter: "管理车间 L1", standardMinutes: 20, isKey: false, status: "completed" } });
+        const oCj20 = await tx.operation.create({ data: { opNo: "OP-CJ-020", routeId: rCj.id, seq: 20, name: "前舱附件拆卸", workCenter: "管理车间 L1", standardMinutes: 60, isKey: true, status: "completed" } });
+        const oCj30 = await tx.operation.create({ data: { opNo: "OP-CJ-030", routeId: rCj.id, seq: 30, name: "拆解件分类入箱", workCenter: "管理车间 L1", standardMinutes: 40, isKey: false, status: "completed" } });
+        const oDev10 = await tx.operation.create({ data: { opNo: "OP-DEV-010", routeId: rDev.id, seq: 10, name: "支架来料核对", workCenter: "零部件区", standardMinutes: 15, isKey: false, status: "pending" } });
+        const oDev20 = await tx.operation.create({ data: { opNo: "OP-DEV-020", routeId: rDev.id, seq: 20, name: "支架试装与测量", workCenter: "零部件区", standardMinutes: 40, isKey: true, status: "pending" } });
+        await tx.workInstruction.createMany({
+          data: [
+            { operationId: oZp10.id, seq: 1, step: "举升车辆并确认安全锁止", torqueSpec: "", tooling: "举升机 L1", qualityReq: "安全锁止到位" },
+            { operationId: oZp10.id, seq: 2, step: "拆卸前防撞梁 4 颗连接螺栓", torqueSpec: "拆卸 25 N·m", tooling: "气动扳手", qualityReq: "螺栓分类存放" },
+            { operationId: oZp10.id, seq: 3, step: "总成入箱 CT-017，打印并粘贴箱码", torqueSpec: "", tooling: "扫码枪", qualityReq: "箱码与实物一致" },
+            { operationId: oZp20.id, seq: 1, step: "核对支架总成物料码 6601200U7300 与批次", torqueSpec: "", tooling: "扫码枪", qualityReq: "物料码与冻结 BOM 一致" },
+            { operationId: oZp20.id, seq: 2, step: "支架定位孔对位，预紧 4 颗 M8 螺栓", torqueSpec: "预紧 12 N·m", tooling: "定扭扳手", qualityReq: "孔位偏差 ≤0.5mm" },
+            { operationId: oZp20.id, seq: 3, step: "按对角顺序复紧至标准扭矩", torqueSpec: "复紧 25 N·m", tooling: "定扭扳手", qualityReq: "扭矩 100% 记录" },
+            { operationId: oZp20.id, seq: 4, step: "粘贴支架合格标识并拍照上传", torqueSpec: "", tooling: "", qualityReq: "照片存入一车一档" },
+            { operationId: oZp30.id, seq: 1, step: "核对线束 8882001U9000 批次与走向", torqueSpec: "", tooling: "扫码枪", qualityReq: "与冻结工艺卡一致" },
+            { operationId: oZp30.id, seq: 2, step: "按卡扣点位敷设线束，禁止强行弯折", torqueSpec: "", tooling: "", qualityReq: "卡扣 100% 到位" },
+            { operationId: oZp30.id, seq: 3, step: "接插件对接并锁止，确认防呆到位", torqueSpec: "", tooling: "", qualityReq: "锁止声确认" },
+            { operationId: oZp40.id, seq: 1, step: "对支架与线束全部扭矩点复紧确认", torqueSpec: "25 N·m", tooling: "定扭扳手", qualityReq: "复紧 100% 记录" },
+            { operationId: oZp40.id, seq: 2, step: "自检支架装配面差与间隙", torqueSpec: "", tooling: "塞尺", qualityReq: "面差 ≤1.0mm" },
+            { operationId: oZp40.id, seq: 3, step: "填写自检记录并提交质量点检", torqueSpec: "", tooling: "", qualityReq: "记录提交质量工程师" },
+            { operationId: oCj10.id, seq: 1, step: "举升车辆并确认安全锁止", torqueSpec: "", tooling: "举升机 L1", qualityReq: "安全锁止到位" },
+            { operationId: oCj20.id, seq: 1, step: "按拆解清单顺序拆卸前舱附件", torqueSpec: "", tooling: "气动扳手", qualityReq: "与冻结拆解清单一致" },
+            { operationId: oCj30.id, seq: 1, step: "拆解件按复用/报废分类入箱并扫码", torqueSpec: "", tooling: "扫码枪", qualityReq: "复用件与报废件不混装" },
+            { operationId: oDev10.id, seq: 1, step: "核对来料支架尺寸与材质报告", torqueSpec: "", tooling: "卡尺", qualityReq: "与 3D 数模一致" },
+            { operationId: oDev20.id, seq: 1, step: "支架试装并测量装配间隙", torqueSpec: "", tooling: "三坐标", qualityReq: "间隙 0.5~1.5mm" },
+          ],
+        });
+        await tx.workReport.createMany({
+          data: [
+            { operationId: oZp10.id, opNo: "OP-ZP-010", routeNo: "GY-E8-017-ZP", vehicleId: "VH-7E001", operator: "陈师傅", measured: "拆卸扭矩 25.1 N·m", result: "passed", note: "螺栓分类入箱 CT-017，箱码已扫码绑定", reportedAt: new Date("2026-07-18T09:15:00") },
+            { operationId: oCj10.id, opNo: "OP-CJ-010", routeNo: "GY-E8-017-CJ", vehicleId: "VH-7E001", operator: "叶师傅", measured: "", result: "passed", note: "举升安全锁止确认到位", reportedAt: new Date("2026-07-17T14:20:00") },
+            { operationId: oCj20.id, opNo: "OP-CJ-020", routeNo: "GY-E8-017-CJ", vehicleId: "VH-7E001", operator: "叶师傅", measured: "", result: "passed", note: "前舱附件按冻结拆解清单拆卸完成", reportedAt: new Date("2026-07-17T15:25:00") },
+            { operationId: oCj30.id, opNo: "OP-CJ-030", routeNo: "GY-E8-017-CJ", vehicleId: "VH-7E001", operator: "叶师傅", measured: "", result: "passed", note: "拆解件复用/报废分类入箱并扫码", reportedAt: new Date("2026-07-17T16:05:00") },
+          ],
+        });
+        const tZp = await tx.inspectionTemplate.create({ data: { templateNo: "QP-E8-017-ZP", name: "前舱感知支架装配质量检验规程", opNo: "OP-ZP-020", status: "released", author: "质量工程师 · 周工" } });
+        const tCj = await tx.inspectionTemplate.create({ data: { templateNo: "QP-E8-017-CJ", name: "前舱拆解质量检验规程", opNo: "OP-CJ-020", status: "released", author: "质量工程师 · 周工" } });
+        await tx.inspectionItem.createMany({
+          data: [
+            { templateId: tZp.id, seq: 1, checkPoint: "支架定位孔位偏差", method: "三坐标", spec: "≤0.5mm" },
+            { templateId: tZp.id, seq: 2, checkPoint: "支架装配面差", method: "塞尺", spec: "≤1.0mm" },
+            { templateId: tZp.id, seq: 3, checkPoint: "复紧扭矩", method: "定扭扳手", spec: "25±2 N·m" },
+            { templateId: tZp.id, seq: 4, checkPoint: "线束卡扣到位率", method: "目视/手检", spec: "100%" },
+            { templateId: tCj.id, seq: 1, checkPoint: "拆解件与清单一致性", method: "扫码核对", spec: "100%" },
+            { templateId: tCj.id, seq: 2, checkPoint: "复用件防护状态", method: "目视", spec: "无损伤" },
+          ],
+        });
+        const irCj = await tx.inspectionRecord.create({ data: { templateId: tCj.id, templateNo: "QP-E8-017-CJ", vehicleId: "VH-7E001", inspector: "叶师傅", result: "passed", inspectedAt: new Date("2026-07-17T16:20:00") } });
+        await tx.inspectionRecordItem.createMany({
+          data: [
+            { recordId: irCj.id, seq: 1, checkPoint: "拆解件与清单一致性", spec: "100%", measured: "12/12 一致", judged: "passed" },
+            { recordId: irCj.id, seq: 2, checkPoint: "复用件防护状态", spec: "无损伤", measured: "防护完好", judged: "passed" },
           ],
         });
 
@@ -94,9 +164,11 @@ export async function POST(req: NextRequest) {
 
         await tx.qualityIssue.createMany({
           data: [
-            { issueNo: "QI-2026-0718-03", projectId: "PRJ-2026-SM-017", vehicleId: "VH-7E001", category: "设计/方案问题", title: "前舱支架装配孔位偏差 1.8mm", severity: "高", status: "rectifying", owner: "张工", dueAt: "今天 18:00", action: "调整支架定位孔并横展同批 5 台车" },
+            { issueNo: "QI-2026-0718-03", projectId: "PRJ-2026-SM-017", vehicleId: "VH-7E001", category: "设计/方案问题", title: "前舱支架装配孔位偏差 1.8mm", severity: "高", status: "rectifying", owner: "张工", dueAt: "今天 18:00", action: "调整支架定位孔并横展同批 5 台车", horizontal: true },
             { issueNo: "QI-2026-0717-11", projectId: "PRJ-2026-SM-017", vehicleId: "VH-7E001", category: "制成问题", title: "线束卡扣未按冻结版工艺卡安装", severity: "中", status: "verifying", owner: "总装一班", dueAt: "07-19", action: "已返工，等待质量复验" },
             { issueNo: "QI-2026-0716-08", projectId: "PRJ-2026-SM-017", vehicleId: "VH-7E002", category: "供应件问题", title: "调拨件标签与实物批次不一致", severity: "中", status: "closed", owner: "物料组", dueAt: "07-18", action: "LES 对账完成，重新打印批次标签" },
+            { issueNo: "QI-2026-0718-03-HX2", projectId: "PRJ-2026-SM-017", vehicleId: "VH-7E002", category: "设计/方案问题", title: "前舱支架装配孔位偏差 1.8mm（横展）", severity: "高", status: "rectifying", owner: "张工", dueAt: "07-20", action: "横展自查：同批支架定位孔复检", sourceIssueNo: "QI-2026-0718-03" },
+            { issueNo: "QI-2026-0718-03-HX3", projectId: "PRJ-2026-SM-017", vehicleId: "VH-7E003", category: "设计/方案问题", title: "前舱支架装配孔位偏差 1.8mm（横展）", severity: "高", status: "rectifying", owner: "张工", dueAt: "07-20", action: "横展自查：同批支架定位孔复检", sourceIssueNo: "QI-2026-0718-03" },
           ],
         });
 
@@ -309,6 +381,144 @@ export async function POST(req: NextRequest) {
       const ws = await prisma.workshopState.findUnique({ where: { id: "singleton" } });
       if (!ws || ws.workshopPaused || ws.checkpointsDone >= ws.checkpointsTotal) return NextResponse.json({ ok: true });
       await prisma.workshopState.update({ where: { id: "singleton" }, data: { checkpointsDone: ws.checkpointsDone + 1 } });
+      return NextResponse.json({ ok: true });
+    }
+
+    case "START_OPERATION": {
+      const { routeId, opId } = payload;
+      const op = await prisma.operation.findFirst({ where: { opNo: opId, route: { routeNo: routeId } } });
+      if (!op || (op.status !== "pending" && op.status !== "dispatched")) return NextResponse.json({ ok: true });
+      const minSort = await prisma.workLog.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.operation.update({ where: { id: op.id }, data: { status: "in_progress", startedAt: op.startedAt ?? new Date() } }),
+        prisma.workLog.create({ data: { time: nowLabel(), title: "工序开工", detail: `${op.name}（${op.opNo}）开始作业`, sort: (minSort._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "COMPLETE_OPERATION": {
+      const { routeId, opId } = payload;
+      const op = await prisma.operation.findFirst({ where: { opNo: opId, route: { routeNo: routeId } } });
+      if (!op || op.status === "completed") return NextResponse.json({ ok: true });
+      const minSortLog = await prisma.workLog.aggregate({ _min: { sort: true } });
+      const minSortTl = await prisma.vehicleTimelineEvent.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.operation.update({ where: { id: op.id }, data: { status: "completed", finishedAt: new Date() } }),
+        prisma.workLog.create({ data: { time: nowLabel(), title: "工序报工", detail: `${op.name}（${op.opNo}）完成并转序，SOP 步骤全部确认`, sort: (minSortLog._min.sort ?? 0) - 1 } }),
+        prisma.vehicleTimelineEvent.create({ data: { time: `07-18 ${nowLabel()}`, title: `工序完成 ${op.opNo}`, detail: `${op.name} 完成，作业记录存入一车一档`, color: "green", sort: (minSortTl._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "DISPATCH_OPERATION": {
+      const { routeId, opId, assignee } = payload;
+      const op = await prisma.operation.findFirst({ where: { opNo: opId, route: { routeNo: routeId } } });
+      if (!op || op.status !== "pending") return NextResponse.json({ ok: true });
+      const minSort = await prisma.workLog.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.operation.update({ where: { id: op.id }, data: { status: "dispatched", assignee } }),
+        prisma.workLog.create({ data: { time: nowLabel(), title: "工序派工", detail: `${op.name}（${op.opNo}）已派工至 ${assignee}`, sort: (minSort._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "PAUSE_OPERATION": {
+      const { routeId, opId } = payload;
+      const op = await prisma.operation.findFirst({ where: { opNo: opId, route: { routeNo: routeId } } });
+      if (!op || op.status !== "in_progress") return NextResponse.json({ ok: true });
+      const minSort = await prisma.workLog.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.operation.update({ where: { id: op.id }, data: { status: "paused" } }),
+        prisma.workLog.create({ data: { time: nowLabel(), title: "工序暂停", detail: `${op.name}（${op.opNo}）已暂停，资源待释放`, sort: (minSort._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "RESUME_OPERATION": {
+      const { routeId, opId } = payload;
+      const op = await prisma.operation.findFirst({ where: { opNo: opId, route: { routeNo: routeId } } });
+      if (!op || op.status !== "paused") return NextResponse.json({ ok: true });
+      const minSort = await prisma.workLog.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.operation.update({ where: { id: op.id }, data: { status: "in_progress" } }),
+        prisma.workLog.create({ data: { time: nowLabel(), title: "工序恢复", detail: `${op.name}（${op.opNo}）恢复作业`, sort: (minSort._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "REPORT_OPERATION": {
+      const { routeId, opId, operator, measured, result, note } = payload;
+      const op = await prisma.operation.findFirst({ where: { opNo: opId, route: { routeNo: routeId } }, include: { route: true } });
+      if (!op || op.status === "completed") return NextResponse.json({ ok: true });
+      const minSortLog = await prisma.workLog.aggregate({ _min: { sort: true } });
+      const minSortTl = await prisma.vehicleTimelineEvent.aggregate({ _min: { sort: true } });
+      const measuredText = measured ? `，实测 ${measured}` : "";
+      await prisma.$transaction([
+        prisma.workReport.create({ data: { operationId: op.id, opNo: op.opNo, routeNo: op.route.routeNo, vehicleId: "VH-7E001", operator, measured: measured ?? "", result: result ?? "passed", note: note ?? "" } }),
+        prisma.operation.update({ where: { id: op.id }, data: { status: "completed", assignee: operator, finishedAt: new Date(), startedAt: op.startedAt ?? new Date() } }),
+        prisma.workLog.create({ data: { time: nowLabel(), title: "工序结构化报工", detail: `${op.name}（${op.opNo}）完成，操作人 ${operator}${measuredText}，结果 ${result === "failed" ? "不合格" : "合格"}`, sort: (minSortLog._min.sort ?? 0) - 1 } }),
+        prisma.vehicleTimelineEvent.create({ data: { time: `07-18 ${nowLabel()}`, title: `工序报工 ${op.opNo}`, detail: `${op.name} 完成并转序，操作人 ${operator}${measuredText}，记录存入一车一档`, color: result === "failed" ? "red" : "green", sort: (minSortTl._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "SUBMIT_INSPECTION": {
+      const { templateId, vehicleId, inspector, result, items } = payload;
+      const template = await prisma.inspectionTemplate.findFirst({ where: { templateNo: templateId } });
+      if (!template) return NextResponse.json({ ok: true });
+      const minSortLog = await prisma.workLog.aggregate({ _min: { sort: true } });
+      const minSortTl = await prisma.vehicleTimelineEvent.aggregate({ _min: { sort: true } });
+      const passed = result !== "failed";
+      await prisma.$transaction(async (tx) => {
+        const record = await tx.inspectionRecord.create({ data: { templateId: template.id, templateNo: template.templateNo, vehicleId, inspector, result: result ?? "passed" } });
+        if (Array.isArray(items) && items.length > 0) {
+          await tx.inspectionRecordItem.createMany({
+            data: items.map((item: { seq: number; checkPoint: string; spec?: string; measured?: string; judged?: string }) => ({
+              recordId: record.id,
+              seq: item.seq,
+              checkPoint: item.checkPoint,
+              spec: item.spec ?? "",
+              measured: item.measured ?? "",
+              judged: item.judged ?? "passed",
+            })),
+          });
+        }
+        await tx.workLog.create({ data: { time: nowLabel(), title: "结构化质量检验", detail: `${template.name} 检验${passed ? "合格" : "不合格"}，检验人 ${inspector}`, sort: (minSortLog._min.sort ?? 0) - 1 } });
+        await tx.vehicleTimelineEvent.create({ data: { time: `07-18 ${nowLabel()}`, title: `质量检验 ${template.templateNo}`, detail: `${template.name} 检验${passed ? "合格" : "不合格"}，检验人 ${inspector}，记录存入一车一档`, color: passed ? "green" : "red", sort: (minSortTl._min.sort ?? 0) - 1 } });
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    case "HORIZONTAL_DEPLOY": {
+      const { id, vehicles } = payload;
+      const source = await prisma.qualityIssue.findUnique({ where: { issueNo: id } });
+      if (!source) return NextResponse.json({ ok: true });
+      const targets: string[] = Array.isArray(vehicles) ? vehicles : [];
+      const minSortTl = await prisma.vehicleTimelineEvent.aggregate({ _min: { sort: true } });
+
+      await prisma.$transaction(async (tx) => {
+        await tx.qualityIssue.update({ where: { issueNo: id }, data: { horizontal: true } });
+        for (const prototypeNo of targets) {
+          const vehicle = await tx.vehicle.findFirst({ where: { prototypeNo } });
+          const seq = String(Math.floor(Math.random() * 90) + 10);
+          await tx.qualityIssue.create({
+            data: {
+              issueNo: `${id}-HX${seq}`,
+              projectId: source.projectId,
+              vehicleId: vehicle?.id,
+              category: source.category,
+              title: `${source.title}（横展）`,
+              severity: source.severity,
+              status: "rectifying",
+              owner: source.owner,
+              dueAt: "07-20",
+              action: "横展自查：同批次复检并记录",
+              sourceIssueNo: id,
+            },
+          });
+        }
+        await tx.vehicleTimelineEvent.create({ data: { time: `07-18 ${nowLabel()}`, title: `质量问题 ${id} 横展`, detail: `已横展至同批 ${targets.length} 台车（${targets.join("、")}），等待各车自查关闭`, color: "gold", sort: (minSortTl._min.sort ?? 0) - 1 } });
+      });
       return NextResponse.json({ ok: true });
     }
 

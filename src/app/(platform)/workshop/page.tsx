@@ -1,12 +1,12 @@
 "use client";
 
-import { CheckCircleFilled, FileProtectOutlined, PauseCircleOutlined, PlayCircleOutlined, QrcodeOutlined, ToolOutlined } from "@ant-design/icons";
-import { Alert, App, Button, Col, Descriptions, List, Modal, Progress, Row, Segmented, Space, Steps } from "antd";
+import { CheckCircleFilled, FileProtectOutlined, KeyOutlined, PauseCircleOutlined, PlayCircleOutlined, QrcodeOutlined, ToolOutlined } from "@ant-design/icons";
+import { Alert, App, Button, Col, Descriptions, List, Modal, Progress, Row, Segmented, Space, Steps, Tag } from "antd";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { SurfaceCard } from "@/components/surface-card";
-import { mainVehicle, useDemoStore } from "@/lib/demo-store";
+import { mainVehicle, useDemoStore, type OperationItem } from "@/lib/demo-store";
 
 export default function WorkshopPage() {
   const { state, dispatch } = useDemoStore();
@@ -49,6 +49,25 @@ export default function WorkshopPage() {
   const togglePause = () => {
     dispatch({ type: "TOGGLE_PAUSE" });
     message.success(state.workshopPaused ? "任务已恢复执行" : "任务已暂停，扫码/点检/报工已锁定");
+  };
+
+  const activeRoute =
+    state.processRoutes.find((route) => route.id === "GY-E8-017-ZP") ??
+    state.processRoutes.find((route) => route.status === "frozen");
+  const activeOp: OperationItem | undefined =
+    activeRoute?.operations.find((op) => op.status === "in_progress") ??
+    activeRoute?.operations.find((op) => op.status === "pending");
+
+  const startOp = () => {
+    if (!activeRoute || !activeOp) return;
+    dispatch({ type: "START_OPERATION", payload: { routeId: activeRoute.id, opId: activeOp.id } });
+    message.success(`工序 ${activeOp.id} 已开工，作业指导书已下发工位`);
+  };
+
+  const reportOp = () => {
+    if (!activeRoute || !activeOp) return;
+    dispatch({ type: "COMPLETE_OPERATION", payload: { routeId: activeRoute.id, opId: activeOp.id } });
+    message.success(`工序 ${activeOp.id} 完成并转序，SOP 记录已写入一车一档`);
   };
 
   return (
@@ -122,6 +141,62 @@ export default function WorkshopPage() {
           </SurfaceCard>
         </Col>
       </Row>
+      {activeRoute && activeOp && (
+        <Row gutter={[14, 14]} style={{ marginTop: 14 }}>
+          <Col span={24}>
+            <SurfaceCard
+              title="当前工序 · 作业指导书（SOP）"
+              subtitle={`${activeRoute.id} · ${activeRoute.name} · ${activeRoute.version}（${activeRoute.status === "frozen" ? "冻结版" : "未冻结"}）`}
+              extra={<StatusPill status={activeOp.status} />}
+            >
+              <Row gutter={[14, 14]}>
+                <Col xs={24} lg={8}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <div style={{ color: "#6b7a8c", fontSize: 12 }}>当前工序 {activeOp.id}</div>
+                      <b style={{ fontSize: 16 }}>{activeOp.name}</b>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <StatusPill status={activeOp.status} />
+                      {activeOp.isKey && <Tag color="gold" icon={<KeyOutlined />}>关键工序 · 质量控制点</Tag>}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div><div style={{ color: "#6b7a8c", fontSize: 12 }}>工作中心</div><b>{activeOp.workCenter}</b></div>
+                      <div><div style={{ color: "#6b7a8c", fontSize: 12 }}>标准工时</div><b>{activeOp.standardMinutes} 分钟</b></div>
+                    </div>
+                    {activeOp.status === "pending" && (
+                      <Button block size="large" type="primary" icon={<PlayCircleOutlined />} disabled={disabled} onClick={startOp}>开工并下发 SOP</Button>
+                    )}
+                    {activeOp.status === "in_progress" && (
+                      <Button block size="large" type="primary" icon={<CheckCircleFilled />} disabled={disabled} onClick={reportOp}>工序报工完成</Button>
+                    )}
+                    {activeOp.status === "completed" && (
+                      <Button block size="large" disabled icon={<CheckCircleFilled />}>本工序已完成</Button>
+                    )}
+                  </div>
+                </Col>
+                <Col xs={24} lg={16}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {activeOp.instructions.map((wi) => (
+                      <div key={wi.seq} style={{ display: "flex", gap: 12, border: "1px solid #e3e8ef", borderRadius: 10, padding: "12px 14px" }}>
+                        <div style={{ flex: "0 0 30px", height: 30, borderRadius: "50%", background: "#0b4f91", color: "#fff", display: "grid", placeItems: "center", fontWeight: 700 }}>{wi.seq}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600 }}>{wi.step}</div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                            {wi.torqueSpec && <Tag color="blue">扭矩 {wi.torqueSpec}</Tag>}
+                            {wi.tooling && <Tag>工装 {wi.tooling}</Tag>}
+                            {wi.qualityReq && <Tag color="green" icon={<CheckCircleFilled />}>{wi.qualityReq}</Tag>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Col>
+              </Row>
+            </SurfaceCard>
+          </Col>
+        </Row>
+      )}
       <Row gutter={[14, 14]} style={{ marginTop: 14 }}>
         <Col xs={24} lg={12}>
           <SurfaceCard title="关键件扫码结果" subtitle={`已完成 ${state.scanCount} / 6 项绑定`}>

@@ -6,7 +6,7 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const [projects, vehicles, gates, reviewPages, scheduleRows, scheduleAdjustments, materials, qualityIssues, integrationSystems, integrationLogs, vehicleTimeline, workshopState, workLogs] =
+  const [projects, vehicles, gates, reviewPages, scheduleRows, scheduleAdjustments, materials, qualityIssues, integrationSystems, integrationLogs, vehicleTimeline, workshopState, workLogs, processRoutes, workReports, inspectionTemplates, inspectionRecords] =
     await Promise.all([
       prisma.retrofitProject.findMany({ orderBy: { createdAt: "asc" } }),
       prisma.vehicle.findMany({ orderBy: { createdAt: "asc" } }),
@@ -21,6 +21,13 @@ export async function GET() {
       prisma.vehicleTimelineEvent.findMany({ orderBy: { sort: "asc" } }),
       prisma.workshopState.findUnique({ where: { id: "singleton" } }),
       prisma.workLog.findMany({ orderBy: { sort: "asc" } }),
+      prisma.processRoute.findMany({
+        include: { project: true, operations: { include: { instructions: true, reports: true }, orderBy: { seq: "asc" } } },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.workReport.findMany({ orderBy: { reportedAt: "desc" } }),
+      prisma.inspectionTemplate.findMany({ include: { items: { orderBy: { seq: "asc" } } }, orderBy: { createdAt: "asc" } }),
+      prisma.inspectionRecord.findMany({ include: { items: { orderBy: { seq: "asc" } } }, orderBy: { inspectedAt: "desc" } }),
     ]);
 
   const state = {
@@ -56,7 +63,7 @@ export async function GET() {
     scheduleRows: scheduleRows.map((s) => ({ workshop: s.workshop, resource: s.resource, am: s.am, pm: s.pm, ev: s.ev, status: s.status })),
     scheduleAdjustments: scheduleAdjustments.map((a) => ({ time: new Date(a.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }), workshop: a.workshop, resource: a.resource, shift: a.shift, before: a.before, after: a.after, operator: a.operator, reason: a.reason })),
     materials: materials.map((m) => ({ code: m.materialCode, name: m.materialName, type: m.materialType, required: m.requiredQty, ready: m.readyQty, readiness: m.readiness, eta: m.eta ?? "", status: m.status })),
-    qualityIssues: qualityIssues.map((q) => ({ id: q.issueNo, title: q.title, category: q.category, vehicle: q.vehicle?.prototypeNo ?? "", severity: q.severity, owner: q.owner, due: q.dueAt ?? "", status: q.status, action: q.action ?? "" })),
+    qualityIssues: qualityIssues.map((q) => ({ id: q.issueNo, title: q.title, category: q.category, vehicle: q.vehicle?.prototypeNo ?? "", severity: q.severity, owner: q.owner, due: q.dueAt ?? "", status: q.status, action: q.action ?? "", horizontal: q.horizontal, sourceIssueNo: q.sourceIssueNo ?? "" })),
     integrationSystems: integrationSystems.map((s) => ({ name: s.name, purpose: s.purpose, status: s.status, latency: s.latency, success: s.success, lastSync: s.lastSync })),
     integrationLogs: integrationLogs.map((l) => ({ time: new Date(l.occurredAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }), system: l.system, interface: l.interfaceKey, business: l.businessKey ?? "", direction: l.direction, status: l.status, message: l.message ?? "" })),
     vehicleTimeline: vehicleTimeline.map((t) => ({ time: t.time, title: t.title, detail: t.detail, color: t.color })),
@@ -67,6 +74,62 @@ export async function GET() {
     checkpointsTotal: workshopState?.checkpointsTotal ?? 12,
     scanCount: workshopState?.scanCount ?? 4,
     workLogs: workLogs.map((w) => ({ time: w.time, title: w.title, detail: w.detail })),
+    processRoutes: processRoutes.map((r) => ({
+      id: r.routeNo,
+      name: r.name,
+      stage: r.stage,
+      version: r.version,
+      status: r.status,
+      author: r.author,
+      project: r.project?.name ?? "",
+      operations: r.operations.map((op) => ({
+        id: op.opNo,
+        seq: op.seq,
+        name: op.name,
+        workCenter: op.workCenter,
+        standardMinutes: op.standardMinutes,
+        isKey: op.isKey,
+        status: op.status,
+        assignee: op.assignee ?? "",
+        startedAt: op.startedAt ? op.startedAt.toISOString() : "",
+        finishedAt: op.finishedAt ? op.finishedAt.toISOString() : "",
+        instructions: op.instructions.map((wi) => ({
+          seq: wi.seq,
+          step: wi.step,
+          torqueSpec: wi.torqueSpec ?? "",
+          tooling: wi.tooling ?? "",
+          qualityReq: wi.qualityReq ?? "",
+        })),
+      })),
+    })),
+    workReports: workReports.map((w) => ({
+      id: w.id,
+      opNo: w.opNo,
+      routeNo: w.routeNo,
+      vehicleId: w.vehicleId,
+      operator: w.operator,
+      measured: w.measured ?? "",
+      result: w.result,
+      note: w.note ?? "",
+      reportedAt: w.reportedAt.toISOString(),
+    })),
+    inspectionTemplates: inspectionTemplates.map((t) => ({
+      id: t.templateNo,
+      name: t.name,
+      opNo: t.opNo ?? "",
+      status: t.status,
+      author: t.author,
+      items: t.items.map((item) => ({ seq: item.seq, checkPoint: item.checkPoint, method: item.method ?? "", spec: item.spec ?? "" })),
+    })),
+    inspectionRecords: inspectionRecords.map((r) => ({
+      id: r.id,
+      templateNo: r.templateNo,
+      vehicleId: r.vehicleId,
+      inspector: r.inspector,
+      result: r.result,
+      inspectedAt: r.inspectedAt.toISOString(),
+      items: r.items.map((item) => ({ seq: item.seq, checkPoint: item.checkPoint, spec: item.spec ?? "", measured: item.measured ?? "", judged: item.judged })),
+    })),
   };
 
   return NextResponse.json(state);
