@@ -1,12 +1,11 @@
 "use client";
 
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, Card, Form, Input, Typography, message } from "antd";
-import { useRouter } from "next/navigation";
+import { App, Button, Card, Form, Input, Typography } from "antd";
 import { useState } from "react";
 
 export default function LoginPage() {
-  const router = useRouter();
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -23,8 +22,7 @@ export default function LoginPage() {
         message.error(data.error || "登录失败");
         return;
       }
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = `${basePath}/dashboard`;
     } catch {
       message.error("网络错误，请重试");
     } finally {

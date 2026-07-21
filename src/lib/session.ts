@@ -29,7 +29,7 @@ export async function createSession(res: NextResponse, data: Omit<SessionData, "
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, `${encoded}.${signature}`, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_DURATION_MS / 1000,
