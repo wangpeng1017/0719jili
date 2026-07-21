@@ -10,7 +10,7 @@ import {
   RightOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
-import { App, Button, Col, Progress, Row, Space, Table, Tag } from "antd";
+import { App, Button, Col, Progress, Row, Space, Statistic, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { MetricCard } from "@/components/metric-card";
@@ -69,6 +69,10 @@ export default function DashboardPage() {
   const totalVehicles = state.projects.reduce((sum, item) => sum + item.vehicles, 0);
   const occupied = state.scheduleRows.filter((row) => row.am !== "空闲" || row.pm !== "空闲").length;
   const liftUtilisation = liftUtilisationRate(state.scheduleRows);
+  const deliveredCount = state.deliveryRecords.filter((item) => item.status === "delivered").length;
+  const receivedDemandCount = state.demandRequests.filter((item) => item.status === "received").length;
+  const openExceptionCount = state.productionExceptions.filter((item) => item.status !== "closed").length;
+  const activeReworkCount = state.reworkTasks.filter((item) => item.status !== "completed").length;
 
   const process = [
     { name: "需求受理", meta: "TOCC/WBS", state: "done" },
@@ -176,6 +180,29 @@ export default function DashboardPage() {
             extra={<Link href="/projects"><Button type="link">查看全部</Button></Link>}
           >
             <Table columns={projectColumns} dataSource={state.projects} rowKey="id" pagination={false} scroll={{ x: 780 }} size="middle" />
+          </SurfaceCard>
+        </Col>
+      </Row>
+
+      <Row gutter={[14, 14]} style={{ marginTop: 14 }}>
+        <Col xs={24} sm={12} xl={6}>
+          <SurfaceCard compact>
+            <Statistic title="交付达成" value={deliveredCount} suffix={`/ ${state.deliveryRecords.length}`} valueStyle={{ color: "#146ec8" }} />
+          </SurfaceCard>
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <SurfaceCard compact>
+            <Statistic title="需求待受理" value={receivedDemandCount} valueStyle={{ color: "#6d5dd3" }} />
+          </SurfaceCard>
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <SurfaceCard compact>
+            <Statistic title="异常待处理" value={openExceptionCount} valueStyle={{ color: "#c93636" }} />
+          </SurfaceCard>
+        </Col>
+        <Col xs={24} sm={12} xl={6}>
+          <SurfaceCard compact>
+            <Statistic title="返工进行中" value={activeReworkCount} valueStyle={{ color: "#b8741a" }} />
           </SurfaceCard>
         </Col>
       </Row>

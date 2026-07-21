@@ -6,7 +6,7 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const [projects, vehicles, gates, reviewPages, scheduleRows, scheduleAdjustments, materials, qualityIssues, integrationSystems, integrationLogs, vehicleTimeline, workshopState, workLogs, processRoutes, workReports, inspectionTemplates, inspectionRecords] =
+  const [projects, vehicles, gates, reviewPages, scheduleRows, scheduleAdjustments, materials, qualityIssues, integrationSystems, integrationLogs, vehicleTimeline, workshopState, workLogs, processRoutes, workReports, inspectionTemplates, inspectionRecords, deliveryRecords, returnRepairs, solutionSections, reviewComments, productionExceptions, reworkTasks, demandRequests, partContainers] =
     await Promise.all([
       prisma.retrofitProject.findMany({ orderBy: { createdAt: "asc" } }),
       prisma.vehicle.findMany({ orderBy: { createdAt: "asc" } }),
@@ -28,6 +28,14 @@ export async function GET() {
       prisma.workReport.findMany({ orderBy: { reportedAt: "desc" } }),
       prisma.inspectionTemplate.findMany({ include: { items: { orderBy: { seq: "asc" } } }, orderBy: { createdAt: "asc" } }),
       prisma.inspectionRecord.findMany({ include: { items: { orderBy: { seq: "asc" } } }, orderBy: { inspectedAt: "desc" } }),
+      prisma.deliveryRecord.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.returnRepair.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.solutionSection.findMany({ orderBy: { seq: "asc" } }),
+      prisma.reviewComment.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.productionException.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.reworkTask.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.demandRequest.findMany({ orderBy: { requestedAt: "desc" } }),
+      prisma.partContainer.findMany({ orderBy: { createdAt: "asc" } }),
     ]);
 
   const state = {
@@ -129,6 +137,86 @@ export async function GET() {
       result: r.result,
       inspectedAt: r.inspectedAt.toISOString(),
       items: r.items.map((item) => ({ seq: item.seq, checkPoint: item.checkPoint, spec: item.spec ?? "", measured: item.measured ?? "", judged: item.judged })),
+    })),
+    deliveryRecords: deliveryRecords.map((d) => ({
+      id: d.deliveryNo,
+      vehicleId: d.vehicleId,
+      projectId: d.projectId,
+      type: d.type,
+      status: d.status,
+      packageSummary: d.packageSummary ?? "",
+      customerName: d.customerName ?? "",
+      signOffBy: d.signOffBy ?? "",
+      signOffAt: d.signOffAt ? d.signOffAt.toISOString() : "",
+      remainingIssues: d.remainingIssues ?? "",
+      toccSynced: d.toccSynced,
+    })),
+    returnRepairs: returnRepairs.map((r) => ({
+      id: r.repairNo,
+      deliveryId: r.deliveryId,
+      vehicleId: r.vehicleId,
+      reason: r.reason,
+      description: r.description ?? "",
+      status: r.status,
+      assignee: r.assignee ?? "",
+    })),
+    solutionSections: solutionSections.map((s) => ({
+      seq: s.seq,
+      fieldKey: s.fieldKey,
+      label: s.label,
+      content: s.content,
+    })),
+    reviewComments: reviewComments.map((c) => ({
+      id: c.id,
+      page: c.page,
+      author: c.author,
+      content: c.content,
+      status: c.status,
+      reply: c.reply ?? "",
+      round: c.round,
+    })),
+    productionExceptions: productionExceptions.map((e) => ({
+      id: e.exceptionNo,
+      vehicleId: e.vehicleId ?? "",
+      routeId: e.routeId ?? "",
+      opId: e.opId ?? "",
+      type: e.type,
+      description: e.description,
+      status: e.status,
+      reporter: e.reporter,
+      handler: e.handler ?? "",
+      resolution: e.resolution ?? "",
+    })),
+    reworkTasks: reworkTasks.map((r) => ({
+      id: r.reworkNo,
+      sourceType: r.sourceType,
+      sourceId: r.sourceId,
+      vehicleId: r.vehicleId ?? "",
+      description: r.description,
+      status: r.status,
+      assignee: r.assignee ?? "",
+      priority: r.priority,
+    })),
+    demandRequests: demandRequests.map((d) => ({
+      id: d.requestNo,
+      sourceSystem: d.sourceSystem,
+      wbsNo: d.wbsNo ?? "",
+      projectName: d.projectName,
+      vehicleCount: d.vehicleCount,
+      taskType: d.taskType,
+      priority: d.priority,
+      status: d.status,
+      assignee: d.assignee ?? "",
+      rejectReason: d.rejectReason ?? "",
+    })),
+    partContainers: partContainers.map((c) => ({
+      id: c.containerNo,
+      vehicleId: c.vehicleId ?? "",
+      projectId: c.projectId ?? "",
+      location: c.location,
+      status: c.status,
+      partList: c.partList,
+      operator: c.operator ?? "",
     })),
   };
 

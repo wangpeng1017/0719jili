@@ -8,6 +8,7 @@ import {
   CarOutlined,
   ControlOutlined,
   DashboardOutlined,
+  FileProtectOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
@@ -17,6 +18,7 @@ import {
   ReloadOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
+  SendOutlined,
   ToolOutlined,
 } from "@ant-design/icons";
 import { App, Avatar, Badge, Button, Drawer, Input, Layout, Menu, Popconfirm, Popover, Space, Tooltip } from "antd";
@@ -32,6 +34,7 @@ type NavItem = { key: string; icon: React.ReactNode; label: string; children?: N
 
 const navigation: NavItem[] = [
   { key: "/dashboard", icon: <DashboardOutlined />, label: "管理驾驶舱" },
+  { key: "/demands", icon: <SendOutlined />, label: "需求承接" },
   { key: "/projects", icon: <ProjectOutlined />, label: "项目与任务" },
   { key: "/review", icon: <AuditOutlined />, label: "方案评审" },
   { key: "/schedule", icon: <ApartmentOutlined />, label: "计划与排产" },
@@ -44,6 +47,7 @@ const navigation: NavItem[] = [
       { key: "/process", label: "工艺路线" },
       { key: "/process/sop", label: "作业指导书" },
       { key: "/production", label: "生产执行" },
+      { key: "/production/exceptions", label: "异常与返工" },
     ],
   },
   { key: "/workshop", icon: <ToolOutlined />, label: "数字工位" },
@@ -56,6 +60,7 @@ const navigation: NavItem[] = [
       { key: "/quality/inspection", label: "质量检验" },
     ],
   },
+  { key: "/delivery", icon: <FileProtectOutlined />, label: "交付归档" },
   { key: "/vehicles/VH-7E001", icon: <CarOutlined />, label: "一车一档" },
   { key: "/integrations", icon: <ControlOutlined />, label: "集成中心" },
 ];

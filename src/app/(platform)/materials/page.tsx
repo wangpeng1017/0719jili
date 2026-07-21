@@ -102,6 +102,56 @@ export default function MaterialsPage() {
           ]}
         />
       </Drawer>
+
+      <Row gutter={[14, 14]} style={{ marginTop: 14 }}>
+        <Col span={24}>
+          <SurfaceCard title="拆换件容器管理" subtitle="拆车件容器全生命周期跟踪">
+            <Table
+              rowKey="id"
+              pagination={false}
+              dataSource={state.partContainers}
+              scroll={{ x: 900 }}
+              columns={[
+                { title: "容器编号", dataIndex: "id", key: "id", width: 110, render: (value) => <span style={{ fontFamily: "Fira Code, monospace", fontSize: 12 }}>{value}</span> },
+                { title: "来源车辆", dataIndex: "vehicleId", key: "vehicleId", width: 110 },
+                { title: "存放位置", dataIndex: "location", key: "location", width: 180 },
+                {
+                  title: "状态", dataIndex: "status", key: "status", width: 100,
+                  render: (value: string) => {
+                    const map: Record<string, { color: string; label: string }> = {
+                      staged: { color: "blue", label: "暂存" },
+                      pending_return: { color: "gold", label: "待回装" },
+                      sealed: { color: "default", label: "已封存" },
+                      returned: { color: "green", label: "已回装" },
+                      scrapped: { color: "red", label: "已报废" },
+                    };
+                    const item = map[value] ?? { color: "default", label: value };
+                    return <Tag color={item.color}>{item.label}</Tag>;
+                  },
+                },
+                { title: "箱内清单", dataIndex: "partList", key: "partList", ellipsis: true },
+                { title: "操作人", dataIndex: "operator", key: "operator", width: 90 },
+                {
+                  title: "操作", key: "action", width: 120,
+                  render: (_, record) => (
+                    <Space>
+                      {record.status === "staged" && (
+                        <Button size="small" onClick={() => { dispatch({ type: "UPDATE_CONTAINER_STATUS", payload: { containerId: record.id, status: "sealed" } }); message.success(`容器 ${record.id} 已封存`); }}>封存</Button>
+                      )}
+                      {record.status === "pending_return" && (
+                        <Button size="small" type="primary" onClick={() => { dispatch({ type: "REINSTALL_PART", payload: { containerId: record.id, vehicleId: record.vehicleId } }); message.success(`容器 ${record.id} 已回装至 ${record.vehicleId}`); }}>回装</Button>
+                      )}
+                      {record.status === "sealed" && (
+                        <Button size="small" danger onClick={() => { dispatch({ type: "UPDATE_CONTAINER_STATUS", payload: { containerId: record.id, status: "scrapped" } }); message.success(`容器 ${record.id} 已报废`); }}>报废</Button>
+                      )}
+                    </Space>
+                  ),
+                },
+              ]}
+            />
+          </SurfaceCard>
+        </Col>
+      </Row>
     </>
   );
 }

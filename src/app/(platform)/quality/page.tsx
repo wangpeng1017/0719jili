@@ -1,6 +1,6 @@
 "use client";
 
-import { BranchesOutlined, CheckCircleOutlined, ExportOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { AuditOutlined, BranchesOutlined, CheckCircleOutlined, ExportOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { App, Button, Checkbox, Col, Descriptions, Empty, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag } from "antd";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
@@ -25,6 +25,8 @@ export default function QualityPage() {
   const [deploySource, setDeploySource] = useState<QualityIssue | null>(null);
   const [deployTargets, setDeployTargets] = useState<string[]>([]);
   const [form] = Form.useForm();
+  const [concessionTarget, setConcessionTarget] = useState<QualityIssue | null>(null);
+  const [concessionForm] = Form.useForm();
 
   const prototypeNos = useMemo(() => state.vehicles.map((v) => v.prototypeNo), [state.vehicles]);
   const deployCandidates = useMemo(
@@ -82,6 +84,15 @@ export default function QualityPage() {
     setDeploySource(null);
   };
 
+  const confirmConcession = async () => {
+    if (!concessionTarget) return;
+    const values = await concessionForm.validateFields();
+    dispatch({ type: "CONCESSION_RELEASE", payload: { issueId: concessionTarget.id, approver: values.approver, reason: values.reason } });
+    message.success("让步放行完成，问题已关闭");
+    concessionForm.resetFields();
+    setConcessionTarget(null);
+  };
+
   return (
     <>
       <PageHeader
@@ -114,7 +125,7 @@ export default function QualityPage() {
             { title: "截止", dataIndex: "due", key: "due", width: 100 },
             { title: "整改/复验", dataIndex: "action", key: "action", width: 280 },
             { title: "状态", dataIndex: "status", key: "status", width: 100, render: (value) => <StatusPill status={value} /> },
-            { title: "操作", key: "actionButton", fixed: "right", width: 190, render: (_, record) => <Space size={6}>{record.status === "verifying" && <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => verify(record.id)}>复验通过</Button>}{!record.sourceIssueNo && record.status !== "closed" && <Button size="small" icon={<BranchesOutlined />} onClick={() => openDeploy(record)}>横展</Button>}<Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => setDetail(record)}>查看</Button></Space> },
+            { title: "操作", key: "actionButton", fixed: "right", width: 260, render: (_, record) => <Space size={6}>{record.status === "verifying" && <Button size="small" type="primary" icon={<CheckCircleOutlined />} onClick={() => verify(record.id)}>复验通过</Button>}{!record.sourceIssueNo && record.status !== "closed" && <Button size="small" icon={<BranchesOutlined />} onClick={() => openDeploy(record)}>横展</Button>}{!record.sourceIssueNo && record.status !== "closed" && <Button size="small" icon={<AuditOutlined />} onClick={() => setConcessionTarget(record)}>让步放行</Button>}<Button size="small" icon={<SafetyCertificateOutlined />} onClick={() => setDetail(record)}>查看</Button></Space> },
           ]}
         />
       </SurfaceCard>
@@ -205,6 +216,27 @@ export default function QualityPage() {
             <Checkbox.Group value={deployTargets} onChange={(values) => setDeployTargets(values as string[])} options={deployCandidates.map((no) => ({ value: no, label: no }))} style={{ display: "flex", flexDirection: "column", gap: 8 }} />
             {deployCandidates.length === 0 && <div style={{ color: "#a0aec0", fontSize: 12 }}>无其他可横展车辆</div>}
           </Space>
+        )}
+      </Modal>
+
+      <Modal
+        title={`让步放行 · ${concessionTarget?.id ?? ""}`}
+        open={Boolean(concessionTarget)}
+        onCancel={() => { concessionForm.resetFields(); setConcessionTarget(null); }}
+        onOk={confirmConcession}
+        okText="确认放行"
+        cancelText="取消"
+      >
+        {concessionTarget && (
+          <Form form={concessionForm} layout="vertical">
+            <div style={{ color: "#5b6b7f", marginBottom: 14 }}>{concessionTarget.title}（{concessionTarget.vehicle}）</div>
+            <Form.Item name="approver" label="审批人" rules={[{ required: true, message: "请输入审批人" }]}>
+              <Input placeholder="如：李工" />
+            </Form.Item>
+            <Form.Item name="reason" label="让步原因" rules={[{ required: true, message: "请输入让步原因" }]}>
+              <Input.TextArea rows={3} placeholder="如：客户同意让步接收，不影响功能安全" />
+            </Form.Item>
+          </Form>
         )}
       </Modal>
     </>

@@ -353,3 +353,124 @@ model WorkLog {
   detail String
   sort   Int    @default(0)
 }
+
+// ④ 交付归档 + 返修回流
+model DeliveryRecord {
+  id              String         @id @default(cuid())
+  deliveryNo      String         @unique
+  vehicleId       String
+  projectId       String
+  type            String         @default("normal")
+  status          String         @default("pending_acceptance")
+  packageSummary  String?
+  customerName    String?
+  signOffBy       String?
+  signOffAt       DateTime?
+  remainingIssues String?
+  toccSynced      Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  returnRepairs   ReturnRepair[]
+}
+
+model ReturnRepair {
+  id           String         @id @default(cuid())
+  repairNo     String         @unique
+  deliveryId   String
+  delivery     DeliveryRecord @relation(fields: [deliveryId], references: [id])
+  vehicleId    String
+  reason       String
+  description  String?
+  status       String         @default("open")
+  assignee     String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+// ⑤ 方案评审深化
+model SolutionSection {
+  id        String  @id @default(cuid())
+  projectId String
+  seq       Int
+  fieldKey  String
+  label     String
+  content   String  @default("")
+  updatedAt DateTime @updatedAt
+}
+
+model ReviewComment {
+  id         String   @id @default(cuid())
+  projectId  String
+  page       Int
+  author     String
+  content    String
+  status     String   @default("open")
+  reply      String?
+  round      Int      @default(1)
+  createdAt  DateTime @default(now())
+  closedAt   DateTime?
+}
+
+// ⑦ 生产异常 + 返工返修
+model ProductionException {
+  id          String   @id @default(cuid())
+  exceptionNo String   @unique
+  vehicleId   String?
+  routeId     String?
+  opId        String?
+  type        String
+  description String
+  status      String   @default("open")
+  reporter    String
+  handler     String?
+  resolution  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ReworkTask {
+  id          String   @id @default(cuid())
+  reworkNo    String   @unique
+  sourceType  String
+  sourceId    String
+  vehicleId   String?
+  description String
+  status      String   @default("open")
+  assignee    String?
+  priority    String   @default("normal")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ⑧ 需求承接
+model DemandRequest {
+  id          String   @id @default(cuid())
+  requestNo   String   @unique
+  sourceSystem String  @default("TOCC")
+  wbsNo       String?
+  projectName String
+  vehicleCount Int     @default(1)
+  taskType    String   @default("standard")
+  priority    String   @default("normal")
+  status      String   @default("received")
+  assignee    String?
+  rejectReason String?
+  requestedAt DateTime @default(now())
+  acceptedAt  DateTime?
+  updatedAt   DateTime @updatedAt
+}
+
+// ⑩ 拆换件完善
+model PartContainer {
+  id          String   @id @default(cuid())
+  containerNo String   @unique
+  vehicleId   String?
+  projectId   String?
+  location    String   @default("线边暂存区")
+  status      String   @default("staged")
+  partList    String   @default("")
+  operator    String?
+  sealedAt    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

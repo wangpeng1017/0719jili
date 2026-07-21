@@ -17,6 +17,14 @@ import {
   vehicleTimeline as initialVehicleTimeline,
   vehicles as initialVehicles,
   workReports as initialWorkReports,
+  deliveryRecords as initialDeliveryRecords,
+  returnRepairs as initialReturnRepairs,
+  solutionSections as initialSolutionSections,
+  reviewComments as initialReviewComments,
+  productionExceptions as initialProductionExceptions,
+  reworkTasks as initialReworkTasks,
+  demandRequests as initialDemandRequests,
+  partContainers as initialPartContainers,
 } from "@/lib/demo-data";
 import { readinessLevel } from "@/lib/status";
 
@@ -37,6 +45,14 @@ export type ProcessRoute = (typeof initialProcessRoutes)[number];
 export type WorkReport = (typeof initialWorkReports)[number];
 export type InspectionTemplate = (typeof initialInspectionTemplates)[number];
 export type InspectionRecord = (typeof initialInspectionRecords)[number];
+export type DeliveryRecord = (typeof initialDeliveryRecords)[number];
+export type ReturnRepair = (typeof initialReturnRepairs)[number];
+export type SolutionSection = (typeof initialSolutionSections)[number];
+export type ReviewComment = (typeof initialReviewComments)[number];
+export type ProductionException = (typeof initialProductionExceptions)[number];
+export type ReworkTask = (typeof initialReworkTasks)[number];
+export type DemandRequest = (typeof initialDemandRequests)[number];
+export type PartContainer = (typeof initialPartContainers)[number];
 
 export type WorkLog = { time: string; title: string; detail: string };
 
@@ -91,6 +107,14 @@ export type DemoState = {
   workReports: WorkReport[];
   inspectionTemplates: InspectionTemplate[];
   inspectionRecords: InspectionRecord[];
+  deliveryRecords: DeliveryRecord[];
+  returnRepairs: ReturnRepair[];
+  solutionSections: SolutionSection[];
+  reviewComments: ReviewComment[];
+  productionExceptions: ProductionException[];
+  reworkTasks: ReworkTask[];
+  demandRequests: DemandRequest[];
+  partContainers: PartContainer[];
 };
 
 export function buildInitialState(): DemoState {
@@ -124,6 +148,14 @@ export function buildInitialState(): DemoState {
     workReports: initialWorkReports.map((item) => ({ ...item })),
     inspectionTemplates: initialInspectionTemplates.map((item) => ({ ...item, items: item.items.map((i) => ({ ...i })) })),
     inspectionRecords: initialInspectionRecords.map((item) => ({ ...item, items: item.items.map((i) => ({ ...i })) })),
+    deliveryRecords: initialDeliveryRecords.map((item) => ({ ...item })),
+    returnRepairs: initialReturnRepairs.map((item) => ({ ...item })),
+    solutionSections: initialSolutionSections.map((item) => ({ ...item })),
+    reviewComments: initialReviewComments.map((item) => ({ ...item })),
+    productionExceptions: initialProductionExceptions.map((item) => ({ ...item })),
+    reworkTasks: initialReworkTasks.map((item) => ({ ...item })),
+    demandRequests: initialDemandRequests.map((item) => ({ ...item })),
+    partContainers: initialPartContainers.map((item) => ({ ...item })),
   };
 }
 
@@ -159,7 +191,30 @@ export type DemoAction =
   | { type: "HORIZONTAL_DEPLOY"; payload: { id: string; vehicles: string[] } }
   | { type: "TOGGLE_PAUSE" }
   | { type: "RETRY_INTEGRATION"; time: string; business: string }
-  | { type: "HEALTH_CHECK" };
+  | { type: "HEALTH_CHECK" }
+  // ④ 交付归档
+  | { type: "SIGN_OFF_DELIVERY"; payload: { deliveryId: string; signOffBy: string } }
+  | { type: "CREATE_RETURN_REPAIR"; payload: { deliveryId: string; vehicleId: string; reason: string; description: string } }
+  | { type: "SYNC_DELIVERY_TOCC"; deliveryId: string }
+  // ⑤ 方案评审深化
+  | { type: "ADD_REVIEW_COMMENT"; payload: { page: number; author: string; content: string } }
+  | { type: "RESOLVE_REVIEW_COMMENT"; payload: { commentId: string; reply: string } }
+  // ⑥ 质量门禁
+  | { type: "CONCESSION_RELEASE"; payload: { issueId: string; approver: string; reason: string } }
+  // ⑦ 生产异常 + 返工
+  | { type: "CREATE_EXCEPTION"; payload: { type: string; description: string; vehicleId: string; routeId: string; opId: string; reporter: string } }
+  | { type: "RESOLVE_EXCEPTION"; payload: { exceptionId: string; handler: string; resolution: string } }
+  | { type: "CREATE_REWORK"; payload: { sourceType: string; sourceId: string; vehicleId: string; description: string; assignee: string; priority: string } }
+  | { type: "COMPLETE_REWORK"; reworkId: string }
+  // ⑧ 需求承接
+  | { type: "ACCEPT_DEMAND"; payload: { requestId: string; assignee: string } }
+  | { type: "REJECT_DEMAND"; payload: { requestId: string; reason: string } }
+  // ⑩ 拆换件
+  | { type: "UPDATE_CONTAINER_STATUS"; payload: { containerId: string; status: string } }
+  | { type: "REINSTALL_PART"; payload: { containerId: string; vehicleId: string } }
+  // ⑨ 排产深化
+  | { type: "INSERT_ORDER"; payload: { workshop: string; resource: string; shift: ScheduleShift; task: string; priority: string; reason: string } }
+  | { type: "AUTO_RECOMMEND" };
 
 export function reducer(state: DemoState, action: DemoAction): DemoState {
   switch (action.type) {
@@ -527,6 +582,198 @@ export function reducer(state: DemoState, action: DemoAction): DemoState {
 
     case "HEALTH_CHECK": {
       return { ...state, integrationSystems: state.integrationSystems.map(projectedHealthCheck) };
+    }
+
+    // ④ 交付归档
+    case "SIGN_OFF_DELIVERY": {
+      const { deliveryId, signOffBy } = action.payload;
+      return {
+        ...state,
+        deliveryRecords: state.deliveryRecords.map((d) =>
+          d.id === deliveryId ? { ...d, status: "delivered", signOffBy, signOffAt: new Date().toISOString() } : d
+        ),
+        vehicleTimeline: pushTimeline(state, { title: `交付签收 ${deliveryId}`, detail: `客户 ${signOffBy} 确认签收，交付包完整`, color: "green" }),
+      };
+    }
+
+    case "CREATE_RETURN_REPAIR": {
+      const { deliveryId, vehicleId, reason, description } = action.payload;
+      const repair: ReturnRepair = { id: `RR-${Date.now()}`, deliveryId, vehicleId, reason, description, status: "open", assignee: "" };
+      return {
+        ...state,
+        returnRepairs: [repair, ...state.returnRepairs],
+        vehicleTimeline: pushTimeline(state, { title: "返修回流", detail: `${reason}，创建返修任务`, color: "gold" }),
+      };
+    }
+
+    case "SYNC_DELIVERY_TOCC": {
+      return {
+        ...state,
+        deliveryRecords: state.deliveryRecords.map((d) =>
+          d.id === action.deliveryId ? { ...d, toccSynced: true } : d
+        ),
+        integrationLogs: [{ time: nowLabel(), system: "TOCC 二期", interface: "交付状态回写", business: action.deliveryId, direction: "发送", status: "healthy", message: "交付完成状态已回写 TOCC" }, ...state.integrationLogs],
+      };
+    }
+
+    // ⑤ 方案评审深化
+    case "ADD_REVIEW_COMMENT": {
+      const { page, author, content } = action.payload;
+      const comment: ReviewComment = { id: `RC-${Date.now()}`, page, author, content, status: "open", reply: "", round: 2 };
+      return {
+        ...state,
+        reviewComments: [comment, ...state.reviewComments],
+        reviewPages: state.reviewPages.map((p) => (p.page === page ? { ...p, comments: p.comments + 1, status: "reviewing" } : p)),
+      };
+    }
+
+    case "RESOLVE_REVIEW_COMMENT": {
+      const { commentId, reply } = action.payload;
+      const comment = state.reviewComments.find((c) => c.id === commentId);
+      if (!comment) return state;
+      return {
+        ...state,
+        reviewComments: state.reviewComments.map((c) => (c.id === commentId ? { ...c, status: "closed", reply } : c)),
+        reviewPages: state.reviewPages.map((p) => {
+          if (p.page !== comment.page) return p;
+          const newCount = Math.max(0, p.comments - 1);
+          return { ...p, comments: newCount, status: newCount === 0 ? "passed" : p.status };
+        }),
+      };
+    }
+
+    // ⑥ 质量门禁
+    case "CONCESSION_RELEASE": {
+      const { issueId, approver, reason } = action.payload;
+      return {
+        ...state,
+        qualityIssues: state.qualityIssues.map((item) =>
+          item.id === issueId ? { ...item, status: "closed", action: `${item.action}；让步放行（${approver}）：${reason}` } : item
+        ),
+        vehicleTimeline: pushTimeline(state, { title: `让步放行 ${issueId}`, detail: `审批人 ${approver}：${reason}`, color: "gold" }),
+      };
+    }
+
+    // ⑦ 生产异常 + 返工
+    case "CREATE_EXCEPTION": {
+      const { type: exType, description, vehicleId, routeId, opId, reporter } = action.payload;
+      const ex: ProductionException = { id: `EX-${Date.now()}`, vehicleId, routeId, opId, type: exType, description, status: "open", reporter, handler: "", resolution: "" };
+      return {
+        ...state,
+        productionExceptions: [ex, ...state.productionExceptions],
+        workLogs: [{ time: nowLabel(), title: "生产异常", detail: `${exType}：${description}` }, ...state.workLogs],
+      };
+    }
+
+    case "RESOLVE_EXCEPTION": {
+      const { exceptionId, handler, resolution } = action.payload;
+      return {
+        ...state,
+        productionExceptions: state.productionExceptions.map((e) =>
+          e.id === exceptionId ? { ...e, status: "closed", handler, resolution } : e
+        ),
+      };
+    }
+
+    case "CREATE_REWORK": {
+      const { sourceType, sourceId, vehicleId, description, assignee, priority } = action.payload;
+      const rw: ReworkTask = { id: `RW-${Date.now()}`, sourceType, sourceId, vehicleId, description, status: "open", assignee, priority };
+      return {
+        ...state,
+        reworkTasks: [rw, ...state.reworkTasks],
+        workLogs: [{ time: nowLabel(), title: "返工任务", detail: `${description}（派工 ${assignee || "待分配"}）` }, ...state.workLogs],
+      };
+    }
+
+    case "COMPLETE_REWORK": {
+      return {
+        ...state,
+        reworkTasks: state.reworkTasks.map((r) => (r.id === action.reworkId ? { ...r, status: "completed" } : r)),
+      };
+    }
+
+    // ⑧ 需求承接
+    case "ACCEPT_DEMAND": {
+      const { requestId, assignee } = action.payload;
+      return {
+        ...state,
+        demandRequests: state.demandRequests.map((d) =>
+          d.id === requestId ? { ...d, status: "accepted", assignee } : d
+        ),
+      };
+    }
+
+    case "REJECT_DEMAND": {
+      const { requestId, reason } = action.payload;
+      return {
+        ...state,
+        demandRequests: state.demandRequests.map((d) =>
+          d.id === requestId ? { ...d, status: "rejected", rejectReason: reason } : d
+        ),
+      };
+    }
+
+    // ⑩ 拆换件
+    case "UPDATE_CONTAINER_STATUS": {
+      const { containerId, status } = action.payload;
+      return {
+        ...state,
+        partContainers: state.partContainers.map((c) => (c.id === containerId ? { ...c, status } : c)),
+      };
+    }
+
+    case "REINSTALL_PART": {
+      const { containerId, vehicleId } = action.payload;
+      const container = state.partContainers.find((c) => c.id === containerId);
+      return {
+        ...state,
+        partContainers: state.partContainers.map((c) => (c.id === containerId ? { ...c, status: "returned" } : c)),
+        vehicleTimeline: pushTimeline(state, { title: `拆车件回装 ${containerId}`, detail: `${container?.partList ?? ""} 回装至 ${vehicleId}，来源校验通过`, color: "green" }),
+      };
+    }
+
+    case "INSERT_ORDER": {
+      const { workshop, resource, shift, task, priority, reason } = action.payload;
+      const row = state.scheduleRows.find((item) => item.workshop === workshop && item.resource === resource);
+      if (!row) return state;
+      const before = row[shift];
+      const adjustment: ScheduleAdjustment = { time: nowLabel(), workshop, resource, shift, before, after: `${task}【${priority}】`, operator: "王欣", reason: `插单：${reason}` };
+      return {
+        ...state,
+        scheduleRows: state.scheduleRows.map((item) =>
+          item.workshop === workshop && item.resource === resource ? { ...item, [shift]: `${task}【${priority}】`, status: "warning" } : item
+        ),
+        scheduleAdjustments: [adjustment, ...state.scheduleAdjustments],
+      };
+    }
+
+    case "AUTO_RECOMMEND": {
+      // Resolve all warnings by moving conflicting tasks to EV or next available slot
+      const rows = state.scheduleRows.map((item) => {
+        if (item.status !== "warning") return item;
+        // Move PM task to EV if EV is free, otherwise clear conflict
+        if (item.ev === "空闲" && item.pm !== "空闲") {
+          return { ...item, ev: item.pm, pm: "空闲", status: "healthy" };
+        }
+        return { ...item, status: "healthy" };
+      });
+      const adjustments: ScheduleAdjustment[] = state.scheduleRows
+        .filter((item) => item.status === "warning")
+        .map((item) => ({
+          time: nowLabel(),
+          workshop: item.workshop,
+          resource: item.resource,
+          shift: "ev" as ScheduleShift,
+          before: item.ev,
+          after: item.pm,
+          operator: "系统",
+          reason: "自动推荐：冲突任务后移至晚上班，约束校验通过",
+        }));
+      return {
+        ...state,
+        scheduleRows: rows,
+        scheduleAdjustments: [...adjustments, ...state.scheduleAdjustments],
+      };
     }
 
     default:

@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
     case "RESET": {
       // Re-seed: delete mutable data and restore defaults
       await prisma.$transaction(async (tx) => {
+        await tx.returnRepair.deleteMany();
+        await tx.deliveryRecord.deleteMany();
+        await tx.reviewComment.deleteMany();
+        await tx.solutionSection.deleteMany();
+        await tx.productionException.deleteMany();
+        await tx.reworkTask.deleteMany();
+        await tx.demandRequest.deleteMany();
+        await tx.partContainer.deleteMany();
         await tx.inspectionRecordItem.deleteMany();
         await tx.inspectionRecord.deleteMany();
         await tx.inspectionItem.deleteMany();
@@ -212,6 +220,56 @@ export async function POST(req: NextRequest) {
             { time: "10:12", title: "扫码装车", detail: "线束 SN-LR-260718-01 绑定车辆", sort: 2 },
           ],
         });
+
+        // ④ 交付归档
+        const dl1 = await tx.deliveryRecord.create({ data: { deliveryNo: "DL-2026-0715-01", vehicleId: "VH-7E002", projectId: "PRJ-2026-ZX-031", type: "normal", status: "delivered", packageSummary: "需求单、方案V2.1冻结版、物料清单5项、报工记录8条、质量检验2次、问题关闭3项", customerName: "试验部 · 陈工", signOffBy: "陈工", signOffAt: new Date("2026-07-15T16:30:00"), toccSynced: true } });
+        await tx.deliveryRecord.create({ data: { deliveryNo: "DL-2026-0720-01", vehicleId: "VH-7E001", projectId: "PRJ-2026-SM-017", type: "normal", status: "pending_acceptance", packageSummary: "需求单、方案V3.0冻结版、物料清单5项、报工记录4条、质量检验1次、问题2项待关闭", customerName: "智驾验证部 · 刘工", remainingIssues: "QI-2026-0718-03 整改中；QI-2026-0717-11 待复验" } });
+        await tx.returnRepair.create({ data: { repairNo: "RR-2026-0716-01", deliveryId: dl1.id, vehicleId: "VH-7E002", reason: "试验反馈：线束接插件松动", description: "客户试验 200km 后发现激光雷达线束接插件有松动迹象，需回厂复检并加固", status: "in_progress", assignee: "总装一班" } });
+
+        // ⑤ 方案评审深化
+        await tx.solutionSection.createMany({ data: [
+          { projectId: "PRJ-2026-SM-017", seq: 1, fieldKey: "purpose", label: "改制目的", content: "为银河 E8 智驾验证车加装前舱感知支架总成及激光雷达线束，支撑 800V 四驱智驾功能验证" },
+          { projectId: "PRJ-2026-SM-017", seq: 2, fieldKey: "scope", label: "车辆范围", content: "E8-SM-017-01 ~ E8-SM-017-06 共 6 台" },
+          { projectId: "PRJ-2026-SM-017", seq: 3, fieldKey: "beforeState", label: "改前状态", content: "量产下线白车身状态，前舱无感知支架" },
+          { projectId: "PRJ-2026-SM-017", seq: 4, fieldKey: "afterTarget", label: "改后目标", content: "前舱感知支架总成安装到位，激光雷达线束敷设接插完成，扭矩 100% 记录" },
+          { projectId: "PRJ-2026-SM-017", seq: 5, fieldKey: "removeParts", label: "拆除件", content: "原车前防撞梁组件（REM-E8-0317），入箱 CT-017 暂存" },
+          { projectId: "PRJ-2026-SM-017", seq: 6, fieldKey: "newParts", label: "新装件", content: "前舱感知支架总成 6601200U7300 ×6；激光雷达线束 8882001U9000 ×6" },
+          { projectId: "PRJ-2026-SM-017", seq: 7, fieldKey: "tooling", label: "工装/设备", content: "举升机 L1、定扭扳手（12/25 N·m）、三坐标、扫码枪" },
+          { projectId: "PRJ-2026-SM-017", seq: 8, fieldKey: "software", label: "软件调试", content: "激光雷达 ECU 刷写 V2.3.1 固件" },
+          { projectId: "PRJ-2026-SM-017", seq: 9, fieldKey: "qualityReq", label: "质量要求", content: "孔位偏差 ≤0.5mm；面差 ≤1.0mm；扭矩 25±2 N·m；卡扣 100%" },
+          { projectId: "PRJ-2026-SM-017", seq: 10, fieldKey: "risk", label: "风险识别", content: "调拨件线束到货不确定（预计 7/19）；首台孔位配合需现场确认" },
+          { projectId: "PRJ-2026-SM-017", seq: 11, fieldKey: "milestones", label: "计划节点", content: "7/17 拆解 → 7/18 装配 → 7/19 调试/检验 → 7/20 交付" },
+        ] });
+        await tx.reviewComment.createMany({ data: [
+          { id: "RC-01", projectId: "PRJ-2026-SM-017", page: 3, author: "物料专员 · 赵工", content: "拆换件清单中原车前防撞梁组件的箱号 CT-017 需确认是否已打印箱码", status: "closed", reply: "已确认 CT-017 箱码已打印并粘贴", round: 1, closedAt: new Date("2026-07-16T10:00:00") },
+          { id: "RC-02", projectId: "PRJ-2026-SM-017", page: 3, author: "质量工程师 · 周工", content: "拆解清单中建议增加线束防护套的拆除步骤，避免拆解损伤", status: "open", round: 2 },
+          { id: "RC-03", projectId: "PRJ-2026-SM-017", page: 5, author: "生产平衡 · 王欣", content: "计划窗口 7/18 与领克 900 首台冲突，建议确认举升机 L1 是否可全天占用", status: "open", round: 2 },
+        ] });
+
+        // ⑦ 生产异常 + 返工
+        await tx.productionException.createMany({ data: [
+          { exceptionNo: "EX-2026-0718-01", vehicleId: "VH-7E001", routeId: "GY-E8-017-ZP", opId: "OP-ZP-020", type: "质量异常", description: "支架定位孔位偏差 1.8mm，超出 ≤0.5mm 规格要求", status: "handling", reporter: "陈师傅", handler: "张工" },
+          { exceptionNo: "EX-2026-0717-02", vehicleId: "VH-7E001", routeId: "GY-E8-017-CJ", opId: "OP-CJ-020", type: "物料异常", description: "拆解发现前舱附件螺栓有 2 颗锈蚀，需更换", status: "closed", reporter: "叶师傅", handler: "物料组", resolution: "已从线边库领取替换螺栓，确认合格" },
+        ] });
+        await tx.reworkTask.createMany({ data: [
+          { reworkNo: "RW-2026-0718-01", sourceType: "quality_issue", sourceId: "QI-2026-0717-11", vehicleId: "VH-7E001", description: "线束卡扣返工：按冻结版工艺卡重新安装全部 12 个卡扣点位", status: "in_progress", assignee: "总装一班", priority: "high" },
+          { reworkNo: "RW-2026-0716-01", sourceType: "return_repair", sourceId: "RR-2026-0716-01", vehicleId: "VH-7E002", description: "返修：激光雷达线束接插件复检并加固", status: "open", priority: "normal" },
+        ] });
+
+        // ⑧ 需求承接
+        await tx.demandRequest.createMany({ data: [
+          { requestNo: "DR-2026-0715-01", sourceSystem: "TOCC", wbsNo: "WBS-SM-26-0718", projectName: "银河 E8 智驾验证车改制", vehicleCount: 6, taskType: "standard", priority: "high", status: "accepted", assignee: "王欣", acceptedAt: new Date("2026-07-15T10:00:00") },
+          { requestNo: "DR-2026-0709-02", sourceSystem: "TOCC", wbsNo: "WBS-BD-26-0709", projectName: "EX5 车身开孔与加强件试制", vehicleCount: 2, taskType: "standard", priority: "normal", status: "accepted", assignee: "李徐燕", acceptedAt: new Date("2026-07-09T14:00:00") },
+          { requestNo: "DR-2026-0720-03", sourceSystem: "TOCC", wbsNo: "WBS-SM-26-0720", projectName: "银河 E8 热管理升级第二批", vehicleCount: 4, taskType: "standard", priority: "normal", status: "received" },
+          { requestNo: "DR-2026-0721-04", sourceSystem: "Excel", projectName: "领克 900 后悬架衬套更换", vehicleCount: 1, taskType: "quick", priority: "low", status: "received" },
+        ] });
+
+        // ⑩ 拆换件
+        await tx.partContainer.createMany({ data: [
+          { containerNo: "CT-017", vehicleId: "VH-7E001", projectId: "PRJ-2026-SM-017", location: "管理车间 · 暂存区 A2", status: "staged", partList: "原车前防撞梁组件 ×1、螺栓组 ×4、线束防护套 ×2", operator: "叶师傅" },
+          { containerNo: "CT-018", vehicleId: "VH-7E001", projectId: "PRJ-2026-SM-017", location: "管理车间 · 暂存区 A2", status: "pending_return", partList: "原车前舱装饰板 ×1、卡扣组 ×8", operator: "叶师傅" },
+          { containerNo: "CT-019", vehicleId: "VH-7E002", projectId: "PRJ-2026-SM-017", location: "准备车间 · 暂存区 B1", status: "sealed", partList: "原车发动机装饰盖 ×1、隔音棉 ×1", operator: "王师傅" },
+        ] });
       });
       return NextResponse.json({ ok: true });
     }
@@ -556,6 +614,172 @@ export async function POST(req: NextRequest) {
           data: { latency: `${nextMs}ms`, status: healed ? "healthy" : "warning", success: healed ? "99.0%" : system.success, lastSync: "刚刚" },
         });
       }
+      return NextResponse.json({ ok: true });
+    }
+
+    // ④ 交付归档
+    case "SIGN_OFF_DELIVERY": {
+      const { deliveryId, signOffBy } = payload;
+      const record = await prisma.deliveryRecord.findFirst({ where: { deliveryNo: deliveryId } });
+      if (!record) return NextResponse.json({ ok: true });
+      const minSortTl = await prisma.vehicleTimelineEvent.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.deliveryRecord.update({ where: { id: record.id }, data: { status: "delivered", signOffBy, signOffAt: new Date() } }),
+        prisma.vehicleTimelineEvent.create({ data: { time: `07-18 ${nowLabel()}`, title: `交付签收 ${deliveryId}`, detail: `客户 ${signOffBy} 确认签收，交付包完整`, color: "green", sort: (minSortTl._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "CREATE_RETURN_REPAIR": {
+      const { deliveryId, vehicleId, reason, description } = payload;
+      const delivery = await prisma.deliveryRecord.findFirst({ where: { deliveryNo: deliveryId } });
+      const count = await prisma.returnRepair.count();
+      const repairNo = `RR-2026-${String(count + 1).padStart(4, "0")}`;
+      const minSortTl = await prisma.vehicleTimelineEvent.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.returnRepair.create({ data: { repairNo, deliveryId: delivery?.id ?? "", vehicleId, reason, description: description ?? "" } }),
+        prisma.vehicleTimelineEvent.create({ data: { time: `07-18 ${nowLabel()}`, title: "返修回流", detail: `${reason}，创建返修任务`, color: "gold", sort: (minSortTl._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "SYNC_DELIVERY_TOCC": {
+      const { deliveryId } = payload;
+      const record = await prisma.deliveryRecord.findFirst({ where: { deliveryNo: deliveryId } });
+      if (!record) return NextResponse.json({ ok: true });
+      await prisma.$transaction([
+        prisma.deliveryRecord.update({ where: { id: record.id }, data: { toccSynced: true } }),
+        prisma.integrationLog.create({ data: { system: "TOCC 二期", interfaceKey: "交付状态回写", businessKey: deliveryId, direction: "发送", status: "healthy", message: "交付完成状态已回写 TOCC" } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ⑤ 方案评审深化
+    case "ADD_REVIEW_COMMENT": {
+      const { page, author, content } = payload;
+      await prisma.$transaction([
+        prisma.reviewComment.create({ data: { projectId: "PRJ-2026-SM-017", page, author, content, round: 2 } }),
+        prisma.reviewPage.updateMany({ where: { page }, data: { comments: { increment: 1 }, status: "reviewing" } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "RESOLVE_REVIEW_COMMENT": {
+      const { commentId, reply } = payload;
+      const comment = await prisma.reviewComment.findUnique({ where: { id: commentId } });
+      if (!comment) return NextResponse.json({ ok: true });
+      await prisma.$transaction([
+        prisma.reviewComment.update({ where: { id: commentId }, data: { status: "closed", reply, closedAt: new Date() } }),
+        prisma.reviewPage.updateMany({ where: { page: comment.page }, data: { comments: { decrement: 1 } } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ⑥ 质量门禁
+    case "CONCESSION_RELEASE": {
+      const { issueId, approver, reason } = payload;
+      const issue = await prisma.qualityIssue.findUnique({ where: { issueNo: issueId } });
+      if (!issue) return NextResponse.json({ ok: true });
+      const minSortTl = await prisma.vehicleTimelineEvent.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.qualityIssue.update({ where: { issueNo: issueId }, data: { status: "closed", action: `${issue.action ?? ""}；让步放行（${approver}）：${reason}`, verifiedAt: new Date() } }),
+        prisma.vehicleTimelineEvent.create({ data: { time: `07-18 ${nowLabel()}`, title: `让步放行 ${issueId}`, detail: `审批人 ${approver}：${reason}`, color: "gold", sort: (minSortTl._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ⑦ 生产异常 + 返工
+    case "CREATE_EXCEPTION": {
+      const { type: exType, description, vehicleId, routeId, opId, reporter } = payload;
+      const count = await prisma.productionException.count();
+      const exceptionNo = `EX-2026-${String(count + 1).padStart(4, "0")}`;
+      const minSort = await prisma.workLog.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.productionException.create({ data: { exceptionNo, vehicleId, routeId, opId, type: exType, description, reporter } }),
+        prisma.workLog.create({ data: { time: nowLabel(), title: "生产异常", detail: `${exType}：${description}`, sort: (minSort._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "RESOLVE_EXCEPTION": {
+      const { exceptionId, handler, resolution } = payload;
+      await prisma.productionException.updateMany({ where: { exceptionNo: exceptionId }, data: { status: "closed", handler, resolution } });
+      return NextResponse.json({ ok: true });
+    }
+
+    case "CREATE_REWORK": {
+      const { sourceType, sourceId, vehicleId, description, assignee, priority } = payload;
+      const count = await prisma.reworkTask.count();
+      const reworkNo = `RW-2026-${String(count + 1).padStart(4, "0")}`;
+      const minSort = await prisma.workLog.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.reworkTask.create({ data: { reworkNo, sourceType, sourceId, vehicleId, description, assignee, priority } }),
+        prisma.workLog.create({ data: { time: nowLabel(), title: "返工任务", detail: `${description}（派工 ${assignee || "待分配"}）`, sort: (minSort._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "COMPLETE_REWORK": {
+      const { reworkId } = payload;
+      await prisma.reworkTask.updateMany({ where: { reworkNo: reworkId }, data: { status: "completed" } });
+      return NextResponse.json({ ok: true });
+    }
+
+    // ⑧ 需求承接
+    case "ACCEPT_DEMAND": {
+      const { requestId, assignee } = payload;
+      await prisma.demandRequest.updateMany({ where: { requestNo: requestId }, data: { status: "accepted", assignee, acceptedAt: new Date() } });
+      return NextResponse.json({ ok: true });
+    }
+
+    case "REJECT_DEMAND": {
+      const { requestId, reason } = payload;
+      await prisma.demandRequest.updateMany({ where: { requestNo: requestId }, data: { status: "rejected", rejectReason: reason } });
+      return NextResponse.json({ ok: true });
+    }
+
+    // ⑩ 拆换件
+    case "UPDATE_CONTAINER_STATUS": {
+      const { containerId, status } = payload;
+      await prisma.partContainer.updateMany({ where: { containerNo: containerId }, data: { status } });
+      return NextResponse.json({ ok: true });
+    }
+
+    case "REINSTALL_PART": {
+      const { containerId, vehicleId } = payload;
+      const container = await prisma.partContainer.findFirst({ where: { containerNo: containerId } });
+      const minSortTl = await prisma.vehicleTimelineEvent.aggregate({ _min: { sort: true } });
+      await prisma.$transaction([
+        prisma.partContainer.updateMany({ where: { containerNo: containerId }, data: { status: "returned" } }),
+        prisma.vehicleTimelineEvent.create({ data: { time: `07-18 ${nowLabel()}`, title: `拆车件回装 ${containerId}`, detail: `${container?.partList ?? ""} 回装至 ${vehicleId}，来源校验通过`, color: "green", sort: (minSortTl._min.sort ?? 0) - 1 } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "INSERT_ORDER": {
+      const { workshop, resource, shift, task, priority, reason } = payload;
+      const slot = await prisma.scheduleSlot.findFirst({ where: { workshop, resource } });
+      if (!slot) return NextResponse.json({ error: "slot not found" }, { status: 404 });
+      const before = slot[shift as "am" | "pm" | "ev"];
+      await prisma.$transaction([
+        prisma.scheduleSlot.update({ where: { id: slot.id }, data: { [shift]: `${task}【${priority}】`, status: "warning" } }),
+        prisma.scheduleAdjustment.create({ data: { workshop, resource, shift, before, after: `${task}【${priority}】`, operator: "王欣", reason: `插单：${reason}` } }),
+      ]);
+      return NextResponse.json({ ok: true });
+    }
+
+    case "AUTO_RECOMMEND": {
+      const warnings = await prisma.scheduleSlot.findMany({ where: { status: "warning" } });
+      const updates = warnings.map((slot) => {
+        if (slot.ev === "空闲" && slot.pm !== "空闲") {
+          return prisma.scheduleSlot.update({ where: { id: slot.id }, data: { ev: slot.pm, pm: "空闲", status: "healthy" } });
+        }
+        return prisma.scheduleSlot.update({ where: { id: slot.id }, data: { status: "healthy" } });
+      });
+      const adjustments = warnings.map((slot) =>
+        prisma.scheduleAdjustment.create({ data: { workshop: slot.workshop, resource: slot.resource, shift: "ev", before: slot.ev, after: slot.pm, operator: "系统", reason: "自动推荐：冲突任务后移至晚上班，约束校验通过" } })
+      );
+      await prisma.$transaction([...updates, ...adjustments]);
       return NextResponse.json({ ok: true });
     }
 
