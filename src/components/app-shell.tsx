@@ -18,7 +18,7 @@ import {
   SearchOutlined,
   ToolOutlined,
 } from "@ant-design/icons";
-import { App, Avatar, Badge, Button, Drawer, Input, Layout, Menu, Popconfirm, Popover, Space, Tag, Tooltip } from "antd";
+import { App, Avatar, Badge, Button, Drawer, Input, Layout, Menu, Popconfirm, Popover, Space, Tooltip } from "antd";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -194,7 +194,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-label="搜索项目、车辆或任务"
               onPressEnter={(event) => search(event.currentTarget.value)}
             />
-            <Tag color="blue">汇报演示环境</Tag>
             <Popconfirm
               title="重置演示数据"
               description="将清除本次演示产生的全部改动，恢复到初始状态"
