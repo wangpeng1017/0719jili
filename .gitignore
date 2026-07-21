@@ -42,3 +42,4 @@ artifacts/
 .env
 .env.*
 !.env.example
+prisma/dev.db

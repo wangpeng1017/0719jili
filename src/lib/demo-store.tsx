@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import {
   gates as initialGates,
   integrationSystems as initialIntegrationSystems,
@@ -336,42 +336,49 @@ export function projectedHealthCheck(system: IntegrationSystem): IntegrationSyst
   return { ...system, latency: `${nextMs}ms`, status: healed ? "healthy" : "warning", success: healed ? "99.0%" : system.success, lastSync: "刚刚" };
 }
 
-const STORAGE_KEY = "jili-demo-store-v1";
-
-function loadPersisted(): DemoState | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as DemoState) : null;
-  } catch {
-    return null;
-  }
-}
-
-type DemoStoreContextValue = { state: DemoState; dispatch: React.Dispatch<DemoAction> };
+type DemoStoreContextValue = { state: DemoState; dispatch: (action: DemoAction) => void; loading: boolean };
 
 const DemoStoreContext = createContext<DemoStoreContextValue | null>(null);
 
 export function DemoStoreProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, buildInitialState);
-  const [hydrated, setHydrated] = useState(false);
+  const [state, localDispatch] = useReducer(reducer, undefined, buildInitialState);
+  const [loading, setLoading] = useState(true);
+  const hydratedRef = useRef(false);
 
+  // Load state from server on mount
   useEffect(() => {
-    const persisted = loadPersisted();
-    if (persisted) dispatch({ type: "HYDRATE", payload: persisted });
-    setHydrated(true);
+    fetch("/api/state")
+      .then((res) => {
+        if (!res.ok) throw new Error("unauthorized");
+        return res.json();
+      })
+      .then((serverState: DemoState) => {
+        localDispatch({ type: "HYDRATE", payload: serverState });
+        hydratedRef.current = true;
+        setLoading(false);
+      })
+      .catch(() => {
+        // Fallback to local state if API unavailable
+        hydratedRef.current = true;
+        setLoading(false);
+      });
   }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {
-      // Storage can be unavailable in restricted browser contexts; the in-memory demo remains usable.
-    }
-  }, [hydrated, state]);
+  // Dispatch: apply locally (optimistic) + sync to server
+  const dispatch = useCallback((action: DemoAction) => {
+    localDispatch(action);
+    // Sync to server (fire-and-forget for demo responsiveness)
+    const payload = "payload" in action ? action.payload : "id" in action ? { id: action.id } : "code" in action ? { code: action.code } : "time" in action ? { time: action.time, business: action.business } : undefined;
+    fetch("/api/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: action.type, payload }),
+    }).catch(() => {
+      // Server sync failed; local state remains authoritative for this session
+    });
+  }, []);
 
-  const value = useMemo(() => ({ state, dispatch }), [state]);
+  const value = useMemo(() => ({ state, dispatch, loading }), [state, dispatch, loading]);
   return <DemoStoreContext.Provider value={value}>{children}</DemoStoreContext.Provider>;
 }
 

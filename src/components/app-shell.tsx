@@ -8,6 +8,7 @@ import {
   CarOutlined,
   ControlOutlined,
   DashboardOutlined,
+  LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
   MenuUnfoldOutlined,
@@ -220,6 +221,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div style={{ color: "#6b7a8c", fontSize: 11 }}>试制策划经理</div>
               </div>
             </Space>
+            <Tooltip title="退出登录">
+              <Button
+                type="text"
+                aria-label="退出登录"
+                icon={<LogoutOutlined />}
+                onClick={async () => {
+                  await fetch("/api/auth/logout", { method: "POST" });
+                  window.location.href = "/login";
+                }}
+              />
+            </Tooltip>
           </Space>
         </header>
         <Content className="platform-content">
