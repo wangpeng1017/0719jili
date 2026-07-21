@@ -105,6 +105,18 @@ a,
   border-radius: 9px;
 }
 
+.platform-menu .ant-menu-sub.ant-menu-inline {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px;
+  margin: 2px 0;
+}
+
+.platform-menu .ant-menu-submenu-title {
+  height: 44px;
+  margin-block: 3px;
+  border-radius: 9px;
+}
+
 .platform-main {
   min-width: 0;
   margin-left: 240px;
