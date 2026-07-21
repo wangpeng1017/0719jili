@@ -344,10 +344,11 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
   const [state, localDispatch] = useReducer(reducer, undefined, buildInitialState);
   const [loading, setLoading] = useState(true);
   const hydratedRef = useRef(false);
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
   // Load state from server on mount
   useEffect(() => {
-    fetch("/api/state")
+    fetch(`${basePath}/api/state`)
       .then((res) => {
         if (!res.ok) throw new Error("unauthorized");
         return res.json();
@@ -362,21 +363,21 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         hydratedRef.current = true;
         setLoading(false);
       });
-  }, []);
+  }, [basePath]);
 
   // Dispatch: apply locally (optimistic) + sync to server
   const dispatch = useCallback((action: DemoAction) => {
     localDispatch(action);
     // Sync to server (fire-and-forget for demo responsiveness)
     const payload = "payload" in action ? action.payload : "id" in action ? { id: action.id } : "code" in action ? { code: action.code } : "time" in action ? { time: action.time, business: action.business } : undefined;
-    fetch("/api/action", {
+    fetch(`${basePath}/api/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: action.type, payload }),
     }).catch(() => {
       // Server sync failed; local state remains authoritative for this session
     });
-  }, []);
+  }, [basePath]);
 
   const value = useMemo(() => ({ state, dispatch, loading }), [state, dispatch, loading]);
   return <DemoStoreContext.Provider value={value}>{children}</DemoStoreContext.Provider>;

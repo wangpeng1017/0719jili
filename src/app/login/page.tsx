@@ -8,11 +8,12 @@ import { useState } from "react";
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
   const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(`${basePath}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),

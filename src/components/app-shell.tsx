@@ -227,8 +227,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 aria-label="退出登录"
                 icon={<LogoutOutlined />}
                 onClick={async () => {
-                  await fetch("/api/auth/logout", { method: "POST" });
-                  window.location.href = "/login";
+                  await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/auth/logout`, { method: "POST" });
+                  window.location.href = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/login`;
                 }}
               />
             </Tooltip>
