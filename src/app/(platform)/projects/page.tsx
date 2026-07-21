@@ -1,7 +1,7 @@
 "use client";
 
 import { FilterOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag, message } from "antd";
+import { App, Button, Form, Input, InputNumber, Modal, Progress, Select, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -48,6 +48,7 @@ const columns: ColumnsType<Project> = [
 
 export default function ProjectsPage() {
   const { state, dispatch } = useDemoStore();
+  const { message } = App.useApp();
   const [keyword, setKeyword] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");

@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleOutlined, FilePdfOutlined, LockOutlined, MessageOutlined } from "@ant-design/icons";
-import { Alert, Button, Col, List, Modal, Progress, Row, Space, Table, Tag, Timeline, message } from "antd";
+import { Alert, App, Button, Col, List, Modal, Progress, Row, Space, Table, Tag, Timeline } from "antd";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
@@ -10,6 +10,7 @@ import { useDemoStore } from "@/lib/demo-store";
 
 export default function ReviewPage() {
   const { state, dispatch } = useDemoStore();
+  const { message } = App.useApp();
   const [previewOpen, setPreviewOpen] = useState(false);
   const pages = state.reviewPages;
   const openComments = pages.reduce((sum, item) => sum + item.comments, 0);

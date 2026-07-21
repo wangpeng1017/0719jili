@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleFilled, FileProtectOutlined, PauseCircleOutlined, PlayCircleOutlined, QrcodeOutlined, ToolOutlined } from "@ant-design/icons";
-import { Alert, Button, Col, Descriptions, List, Modal, Progress, Row, Segmented, Space, Steps, message } from "antd";
+import { Alert, App, Button, Col, Descriptions, List, Modal, Progress, Row, Segmented, Space, Steps } from "antd";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
@@ -10,6 +10,7 @@ import { mainVehicle, useDemoStore } from "@/lib/demo-store";
 
 export default function WorkshopPage() {
   const { state, dispatch } = useDemoStore();
+  const { message } = App.useApp();
   const [mode, setMode] = useState<string | number>("工位模式");
   const [filesOpen, setFilesOpen] = useState(false);
   const vehicle = mainVehicle(state);

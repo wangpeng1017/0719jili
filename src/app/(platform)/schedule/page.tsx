@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarOutlined, ReloadOutlined, WarningOutlined } from "@ant-design/icons";
-import { Alert, Button, DatePicker, Drawer, Input, Segmented, Space, Tag, Timeline, message } from "antd";
+import { Alert, App, Button, DatePicker, Drawer, Input, Segmented, Space, Tag, Timeline } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
@@ -13,6 +13,7 @@ const DEMO_DATE = "2026-07-18";
 
 export default function SchedulePage() {
   const { state, dispatch } = useDemoStore();
+  const { message } = App.useApp();
   const [selected, setSelected] = useState<{ workshop: string; resource: string; shift: ScheduleShift; task: string } | null>(null);
   const [adjustDraft, setAdjustDraft] = useState("");
   const [adjustReason, setAdjustReason] = useState("");

@@ -1,7 +1,7 @@
 "use client";
 
 import { BarcodeOutlined, InboxOutlined, QrcodeOutlined } from "@ant-design/icons";
-import { Button, Col, Drawer, Modal, Progress, Row, Space, Statistic, Table, Tag, message } from "antd";
+import { App, Button, Col, Drawer, Modal, Progress, Row, Space, Statistic, Table, Tag } from "antd";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { QrCode } from "@/components/qr-code";
@@ -14,6 +14,7 @@ const REMOVED_PART_CODE = "REM-E8-0317";
 
 export default function MaterialsPage() {
   const { state, dispatch } = useDemoStore();
+  const { message } = App.useApp();
   const [qrOpen, setQrOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
 

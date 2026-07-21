@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfigProvider } from "antd";
+import { App, ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { DemoStoreProvider } from "@/lib/demo-store";
 
@@ -27,7 +27,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
           },
         }}
       >
-        {children}
+        <App>{children}</App>
       </ConfigProvider>
     </DemoStoreProvider>
   );

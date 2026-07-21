@@ -17,7 +17,7 @@ import {
   SearchOutlined,
   ToolOutlined,
 } from "@ant-design/icons";
-import { Avatar, Badge, Button, Drawer, Input, Layout, Menu, Popconfirm, Popover, Space, Tag, Tooltip, message } from "antd";
+import { App, Avatar, Badge, Button, Drawer, Input, Layout, Menu, Popconfirm, Popover, Space, Tag, Tooltip } from "antd";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -60,6 +60,7 @@ function NavigationMenu({ selectedKey, close }: { selectedKey: string; close?: (
 function useGlobalSearch() {
   const router = useRouter();
   const { state } = useDemoStore();
+  const { message } = App.useApp();
 
   return (keyword: string) => {
     const term = keyword.trim().toLowerCase();
@@ -126,6 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const search = useGlobalSearch();
   const { dispatch } = useDemoStore();
+  const { message } = App.useApp();
 
   const selectedKey = useMemo(() => {
     if (pathname.startsWith("/vehicles")) return "/vehicles/VH-7E001";

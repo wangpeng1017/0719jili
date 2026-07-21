@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons";
-import { Button, Col, Descriptions, Modal, Row, Space, Table, Tag, message } from "antd";
+import { App, Button, Col, Descriptions, Modal, Row, Space, Table, Tag } from "antd";
 import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
@@ -16,6 +16,7 @@ const connectorConfig = [
 
 export default function IntegrationsPage() {
   const { state, dispatch } = useDemoStore();
+  const { message } = App.useApp();
   const [configOpen, setConfigOpen] = useState(false);
   const [checking, setChecking] = useState(false);
 

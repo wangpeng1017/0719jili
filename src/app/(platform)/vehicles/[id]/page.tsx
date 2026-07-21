@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleFilled, CloseCircleFilled, DownloadOutlined, FileDoneOutlined, QrcodeOutlined } from "@ant-design/icons";
-import { Breadcrumb, Button, Col, Descriptions, Modal, Progress, Row, Space, Tabs, Tag, Timeline, message } from "antd";
+import { App, Breadcrumb, Button, Col, Descriptions, Modal, Progress, Row, Space, Tabs, Tag, Timeline } from "antd";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -15,6 +15,7 @@ import { useDemoStore } from "@/lib/demo-store";
 export default function VehicleDossierPage() {
   const params = useParams<{ id: string }>();
   const { state } = useDemoStore();
+  const { message } = App.useApp();
   const vehicle = state.vehicles.find((item) => item.id === params.id) ?? state.vehicles[0];
   const [qrOpen, setQrOpen] = useState(false);
 

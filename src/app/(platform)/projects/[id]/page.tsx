@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleFilled, CloseCircleFilled, FileTextOutlined, RightOutlined } from "@ant-design/icons";
-import { Breadcrumb, Button, Col, Descriptions, Progress, Row, Space, Table, Tabs, Tag, message } from "antd";
+import { App, Breadcrumb, Button, Col, Descriptions, Progress, Row, Space, Table, Tabs, Tag } from "antd";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -14,6 +14,7 @@ import { useDemoStore } from "@/lib/demo-store";
 export default function ProjectDetailPage() {
   const params = useParams<{ id: string }>();
   const { state } = useDemoStore();
+  const { message } = App.useApp();
   const project = state.projects.find((item) => item.id === params.id) ?? state.projects[0];
   const stages = ["需求受理", "方案冻结", "准备确认", "拆解", "装配", "调试检验", "交付归档"];
 

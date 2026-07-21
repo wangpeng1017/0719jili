@@ -10,7 +10,7 @@ import {
   RightOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
-import { Button, Col, Progress, Row, Space, Table, Tag, message } from "antd";
+import { App, Button, Col, Progress, Row, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { MetricCard } from "@/components/metric-card";
@@ -61,6 +61,7 @@ const projectColumns: ColumnsType<Project> = [
 
 export default function DashboardPage() {
   const { state } = useDemoStore();
+  const { message } = App.useApp();
   const project = mainProject(state);
   const vehicle = mainVehicle(state);
   const unclosed = unclosedQualityCount(state);

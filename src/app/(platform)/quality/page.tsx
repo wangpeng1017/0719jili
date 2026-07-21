@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircleOutlined, ExportOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
-import { Button, Col, Descriptions, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag, message } from "antd";
+import { App, Button, Col, Descriptions, Form, Input, Modal, Row, Select, Space, Statistic, Table, Tag } from "antd";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
@@ -18,6 +18,7 @@ const categoryOptions = [
 
 export default function QualityPage() {
   const { state, dispatch } = useDemoStore();
+  const { message } = App.useApp();
   const [category, setCategory] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<QualityIssue | null>(null);
