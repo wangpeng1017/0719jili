@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarOutlined, PlusOutlined, ReloadOutlined, ThunderboltOutlined, WarningOutlined } from "@ant-design/icons";
+import { CalendarOutlined, PlusOutlined, ReloadOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { Alert, App, Button, DatePicker, Descriptions, Drawer, Input, Modal, Progress, Segmented, Select, Space, Table, Tag, Timeline } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useMemo, useState } from "react";
@@ -84,11 +84,6 @@ export default function SchedulePage() {
     }
   };
 
-  const adoptSuggestion = () => {
-    dispatch({ type: "ADOPT_SUGGESTION" });
-    message.success("已采纳建议：E8-03 后移至晚上班，冲突已解除，人工调整原因已留痕");
-  };
-
   const autoRecommend = () => {
     dispatch({ type: "AUTO_RECOMMEND" });
     message.success("自动推荐完成：已根据约束规则优化排程，冲突任务后移至可用班次");
@@ -151,17 +146,6 @@ export default function SchedulePage() {
           </Space>
         }
       />
-      {hasConflict && (
-        <Alert
-          type="warning"
-          showIcon
-          icon={<WarningOutlined />}
-          message="准备车间 L2 下午班存在插单冲突"
-          description="EX5 工装测量预计延长 1.5 小时，与 E8-03 临时插单重叠。建议方案：E8-03 后移至晚上班，预计不影响 07-25 交付。"
-          action={<Space><Button size="small" onClick={adoptSuggestion}>采纳建议</Button><Button size="small" onClick={autoRecommend}>自动推荐</Button></Space>}
-          style={{ marginBottom: 14 }}
-        />
-      )}
 
       {/* 约束规则校验面板 */}
       <div style={{ marginBottom: 14 }}>
