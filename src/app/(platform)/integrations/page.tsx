@@ -1,29 +1,49 @@
 "use client";
 
 import { ApiOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons";
-import { Button, Col, message, Row, Space, Table, Tag } from "antd";
+import { Button, Col, Descriptions, Modal, Row, Space, Table, Tag, message } from "antd";
+import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { SurfaceCard } from "@/components/surface-card";
-import { integrationSystems } from "@/lib/demo-data";
+import { projectedHealthCheck, useDemoStore } from "@/lib/demo-store";
 
-const logs = [
-  { time: "16:28:12", system: "TOCC 二期", interface: "车辆主档增量同步", business: "GEELY-VH-7E003", direction: "接收", status: "healthy", message: "车辆状态与项目 WBS 同步成功" },
-  { time: "16:21:46", system: "LES", interface: "齐套状态查询", business: "PRJ-2026-SM-017", direction: "接收", status: "warning", message: "1 项调拨件预计到料时间发生变化" },
-  { time: "16:09:08", system: "SAP", interface: "物料主数据同步", business: "6601200U7300", direction: "接收", status: "healthy", message: "名称、规格与状态同步成功" },
-  { time: "15:52:33", system: "TOCC 二期", interface: "任务执行状态回写", business: "RT-2026-0718-E8-01", direction: "发送", status: "healthy", message: "装配阶段状态回写成功" },
+const connectorConfig = [
+  { key: "tocc", label: "TOCC 二期", children: "REST · OAuth2 · 5 分钟增量轮询" },
+  { key: "sap", label: "SAP", children: "IDoc · 定时批同步 · 每日 02:00" },
+  { key: "les", label: "LES", children: "REST · 事件回调 · 实时" },
 ];
 
 export default function IntegrationsPage() {
+  const { state, dispatch } = useDemoStore();
+  const [configOpen, setConfigOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const healthCheck = () => {
+    setChecking(true);
+    const projected = state.integrationSystems.map(projectedHealthCheck);
+    window.setTimeout(() => {
+      dispatch({ type: "HEALTH_CHECK" });
+      setChecking(false);
+      const stillWarning = projected.some((item) => item.status === "warning");
+      message.success(stillWarning ? "健康检查完成：LES 延迟已下降，仍高于阈值" : "健康检查完成：全部系统恢复正常");
+    }, 600);
+  };
+
+  const retry = (log: (typeof state.integrationLogs)[number]) => {
+    dispatch({ type: "RETRY_INTEGRATION", time: log.time, business: log.business });
+    message.success(`已重新处理 ${log.business}，同步成功`);
+  };
+
   return (
     <>
       <PageHeader
         title="一体化集成中心"
         description="TOCC 管车辆与项目总账，SAP 管物料主数据，LES 管库存与配送；改制系统沉淀执行明细、业务门禁和一车一档。"
-        actions={<Space><Button icon={<SettingOutlined />}>连接器配置</Button><Button type="primary" icon={<ReloadOutlined />} onClick={() => message.success("已完成健康检查，LES 延迟仍高于阈值")}>健康检查</Button></Space>}
+        actions={<Space><Button icon={<SettingOutlined />} onClick={() => setConfigOpen(true)}>连接器配置</Button><Button type="primary" icon={<ReloadOutlined />} loading={checking} onClick={healthCheck}>健康检查</Button></Space>}
       />
       <Row gutter={[14, 14]}>
-        {integrationSystems.map((system) => (
+        {state.integrationSystems.map((system) => (
           <Col xs={24} lg={8} key={system.name}>
             <SurfaceCard compact>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
@@ -43,7 +63,7 @@ export default function IntegrationsPage() {
         <SurfaceCard title="接口调用记录" subtitle="失败数据可查看原因并重新处理；来源版本、同步时间和业务键全部留痕">
           <Table
             rowKey={(record) => `${record.time}-${record.business}`}
-            dataSource={logs}
+            dataSource={state.integrationLogs}
             pagination={false}
             scroll={{ x: 880 }}
             columns={[
@@ -54,12 +74,15 @@ export default function IntegrationsPage() {
               { title: "方向", dataIndex: "direction", key: "direction", width: 80, render: (value) => <Tag>{value}</Tag> },
               { title: "处理结果", dataIndex: "message", key: "message" },
               { title: "状态", dataIndex: "status", key: "status", width: 90, render: (value) => <StatusPill status={value} /> },
-              { title: "", key: "action", width: 95, render: (_, record) => <Button size="small" disabled={record.status === "healthy"} onClick={() => message.success("已提交重新处理")}>重新处理</Button> },
+              { title: "", key: "action", width: 95, render: (_, record) => <Button size="small" disabled={record.status === "healthy"} onClick={() => retry(record)}>重新处理</Button> },
             ]}
           />
         </SurfaceCard>
       </div>
+
+      <Modal title="连接器配置" open={configOpen} onCancel={() => setConfigOpen(false)} footer={<Button onClick={() => setConfigOpen(false)}>关闭</Button>}>
+        <Descriptions column={1} size="small" items={connectorConfig} />
+      </Modal>
     </>
   );
 }
-

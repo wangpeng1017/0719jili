@@ -1,18 +1,32 @@
 "use client";
 
 import { CheckCircleFilled, CloseCircleFilled, FileTextOutlined, RightOutlined } from "@ant-design/icons";
-import { Breadcrumb, Button, Col, Descriptions, Progress, Row, Space, Table, Tabs, Tag } from "antd";
+import { Breadcrumb, Button, Col, Descriptions, Progress, Row, Space, Table, Tabs, Tag, message } from "antd";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { SurfaceCard } from "@/components/surface-card";
-import { gates, mainProjectId, projects, vehicles } from "@/lib/demo-data";
+import { downloadJson } from "@/lib/export";
+import { mainProjectId } from "@/lib/demo-data";
+import { useDemoStore } from "@/lib/demo-store";
 
 export default function ProjectDetailPage() {
   const params = useParams<{ id: string }>();
-  const project = projects.find((item) => item.id === params.id) ?? projects[0];
+  const { state } = useDemoStore();
+  const project = state.projects.find((item) => item.id === params.id) ?? state.projects[0];
   const stages = ["需求受理", "方案冻结", "准备确认", "拆解", "装配", "调试检验", "交付归档"];
+
+  const exportSnapshot = () => {
+    downloadJson(`项目快照-${project.id}-${new Date().toISOString().slice(0, 10)}.json`, {
+      generatedAt: new Date().toISOString(),
+      project,
+      门禁: state.gates,
+      车辆: state.vehicles,
+      执行方案版本: state.activeVersion,
+    });
+    message.success(`已导出项目「${project.name}」快照`);
+  };
 
   return (
     <>
@@ -20,12 +34,12 @@ export default function ProjectDetailPage() {
       <PageHeader
         title={project.name}
         description={`${project.id} · ${project.wbs} · ${project.type}。以车辆为颗粒度独立排产、执行、质量和交付。`}
-        actions={<Space><Button icon={<FileTextOutlined />}>生成项目快照</Button><StatusPill status={project.status} /></Space>}
+        actions={<Space><Button icon={<FileTextOutlined />} onClick={exportSnapshot}>生成项目快照</Button><StatusPill status={project.status} /></Space>}
       />
 
       <Row gutter={[14, 14]}>
         <Col xs={24} xl={16}>
-          <SurfaceCard title="项目总体进度" subtitle="当前执行依据：改制方案 V3.0（已冻结）">
+          <SurfaceCard title="项目总体进度" subtitle={`当前执行依据：改制方案 ${state.activeVersion}${state.versionFrozen ? "（已冻结）" : "（沿用上一冻结版）"}`}>
             <Progress percent={project.progress} strokeColor={{ "0%": "#146ec8", "100%": "#16845b" }} />
             <div className="process-line" style={{ marginTop: 20 }}>
               {stages.map((stage, index) => (
@@ -46,7 +60,7 @@ export default function ProjectDetailPage() {
               { key: "vehicle", label: "车辆范围", children: `${project.vehicles} 台` },
               { key: "date", label: "承诺交付", children: `2026-${project.promisedAt}` },
               { key: "source", label: "需求来源", children: "TOCC 二期 / LIMS 委托" },
-              { key: "sync", label: "最后同步", children: "2026-07-18 16:28" },
+              { key: "sync", label: "最后同步", children: "刚刚" },
             ]} />
           </SurfaceCard>
         </Col>
@@ -56,7 +70,7 @@ export default function ProjectDetailPage() {
         <Col span={24}>
           <SurfaceCard title="六项开工门禁" subtitle="任一门禁未通过，车辆任务保持“准备中”且不可开工">
             <div className="gate-grid">
-              {gates.map((gate) => (
+              {state.gates.map((gate) => (
                 <div key={gate.key} className={`gate-card ${gate.passed ? "passed" : "blocked"}`}>
                   <div className="gate-name">
                     <span>{gate.name}</span>
@@ -82,7 +96,7 @@ export default function ProjectDetailPage() {
                     <Table
                       rowKey="id"
                       pagination={false}
-                      dataSource={vehicles}
+                      dataSource={state.vehicles}
                       scroll={{ x: 820 }}
                       columns={[
                         { title: "车辆", key: "vehicle", render: (_, record) => <div><Link href={`/vehicles/${record.id}`} style={{ color: "#0b4f91", fontWeight: 700 }}>{record.prototypeNo}</Link><div style={{ color: "#718096", fontSize: 11 }}>{record.uid}</div></div> },
@@ -96,7 +110,7 @@ export default function ProjectDetailPage() {
                     />
                   ),
                 },
-                { key: "change", label: "变更影响", children: <div style={{ padding: "20px 4px", color: "#5b6b7f" }}>V4.0 变更评审涉及拆换件清单与计划窗口，系统已标记对 E8-03 物料与排产的潜在影响。</div> },
+                { key: "change", label: "变更影响", children: <div style={{ padding: "20px 4px", color: "#5b6b7f" }}>{state.versionFrozen ? `${state.activeVersion} 变更评审已冻结，涉及拆换件清单与计划窗口的影响已确认。` : "V4.0 变更评审涉及拆换件清单与计划窗口，系统已标记对 E8-03 物料与排产的潜在影响。"}</div> },
               ]}
             />
           </SurfaceCard>
@@ -107,4 +121,3 @@ export default function ProjectDetailPage() {
     </>
   );
 }
-

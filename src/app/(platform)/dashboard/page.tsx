@@ -6,29 +6,21 @@ import {
   CarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  DownloadOutlined,
   RightOutlined,
   SafetyCertificateOutlined,
 } from "@ant-design/icons";
-import { Button, Col, Progress, Row, Space, Table, Tag } from "antd";
+import { Button, Col, Progress, Row, Space, Table, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import Link from "next/link";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { SurfaceCard } from "@/components/surface-card";
-import { projects, scheduleRows } from "@/lib/demo-data";
+import { downloadJson } from "@/lib/export";
+import { liftUtilisationRate, mainProject, mainVehicle, unclosedQualityCount, useDemoStore, type Project } from "@/lib/demo-store";
 
-const process = [
-  { name: "需求受理", meta: "TOCC/WBS", state: "done" },
-  { name: "方案评审", meta: "执行版 V3 已冻结", state: "done" },
-  { name: "准备确认", meta: "5/6 门禁通过", state: "active" },
-  { name: "排产派工", meta: "L1 下午班", state: "active" },
-  { name: "改制执行", meta: "装配阶段 71%", state: "active" },
-  { name: "质量放行", meta: "2 项待闭环", state: "" },
-  { name: "交付归档", meta: "计划 07-25", state: "" },
-];
-
-const projectColumns: ColumnsType<(typeof projects)[number]> = [
+const projectColumns: ColumnsType<Project> = [
   {
     title: "项目 / WBS",
     dataIndex: "name",
@@ -68,17 +60,45 @@ const projectColumns: ColumnsType<(typeof projects)[number]> = [
 ];
 
 export default function DashboardPage() {
-  const occupied = scheduleRows.filter((row) => row.am !== "空闲" || row.pm !== "空闲").length;
+  const { state } = useDemoStore();
+  const project = mainProject(state);
+  const vehicle = mainVehicle(state);
+  const unclosed = unclosedQualityCount(state);
+  const highRiskIssues = state.qualityIssues.filter((item) => item.status !== "closed" && item.severity === "高").length;
+  const totalVehicles = state.projects.reduce((sum, item) => sum + item.vehicles, 0);
+  const occupied = state.scheduleRows.filter((row) => row.am !== "空闲" || row.pm !== "空闲").length;
+  const liftUtilisation = liftUtilisationRate(state.scheduleRows);
+
+  const process = [
+    { name: "需求受理", meta: "TOCC/WBS", state: "done" },
+    { name: "方案评审", meta: state.versionFrozen ? `${state.activeVersion} 已冻结，现场执行依据升级` : `执行版 ${state.activeVersion} 已冻结，V4.0 评审中`, state: "done" },
+    { name: "准备确认", meta: `${state.gates.filter((gate) => gate.passed).length}/${state.gates.length} 门禁通过`, state: "active" },
+    { name: "排产派工", meta: "L1 下午班", state: "active" },
+    { name: "改制执行", meta: `装配阶段 ${vehicle.progress}%`, state: "active" },
+    { name: "质量放行", meta: `${unclosed} 项待闭环`, state: unclosed === 0 ? "done" : "" },
+    { name: "交付归档", meta: `计划 ${project.promisedAt}`, state: "" },
+  ];
+
+  const exportSnapshot = () => {
+    downloadJson(`驾驶舱快照-${project.id}-${new Date().toISOString().slice(0, 10)}.json`, {
+      generatedAt: new Date().toISOString(),
+      kpi: { 在制车辆: totalVehicles, 核心项目完成率: `${project.progress}%`, 举升机利用率: `${liftUtilisation}%`, 未关闭质量问题: unclosed },
+      重点项目: project,
+      重点车辆: vehicle,
+      项目组合: state.projects,
+    });
+    message.success("汇报快照已导出为本地 JSON 文件");
+  };
 
   return (
     <>
       <PageHeader
         title="改制业务驾驶舱"
-        description="以车辆为主线监控项目进度、物料齐套、举升机占用、质量闭环和交付风险。数据口径：2026-07-18 16:30。"
+        description="以车辆为主线监控项目进度、物料齐套、举升机占用、质量闭环和交付风险。数据口径：实时演示数据。"
         actions={
           <Space>
-            <Button>导出汇报快照</Button>
-            <Link href="/projects/PRJ-2026-SM-017">
+            <Button icon={<DownloadOutlined />} onClick={exportSnapshot}>导出汇报快照</Button>
+            <Link href={`/projects/${project.id}`}>
               <Button type="primary">进入重点项目</Button>
             </Link>
           </Space>
@@ -87,16 +107,16 @@ export default function DashboardPage() {
 
       <Row gutter={[14, 14]}>
         <Col xs={24} sm={12} xl={6}>
-          <MetricCard label="在制车辆" value={14} suffix="台" detail="较昨日 +2，3 台计划本周交付" color="#146ec8" icon={<CarOutlined />} />
+          <MetricCard label="在制车辆" value={totalVehicles} suffix="台" detail={`跨 ${state.projects.length} 个项目统计`} color="#146ec8" icon={<CarOutlined />} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <MetricCard label="核心项目完成率" value="68%" detail="重点 SM 改制处于装配阶段" color="#16845b" icon={<CheckCircleOutlined />} />
+          <MetricCard label="核心项目完成率" value={`${project.progress}%`} detail="重点 SM 改制处于装配阶段" color="#16845b" icon={<CheckCircleOutlined />} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <MetricCard label="举升机利用率" value="74%" detail={`${occupied} 个资源今日有任务，1 台维护`} color="#6d5dd3" icon={<ApartmentOutlined />} />
+          <MetricCard label="举升机利用率" value={`${liftUtilisation}%`} detail={`${occupied} 个资源今日有任务`} color="#6d5dd3" icon={<ApartmentOutlined />} />
         </Col>
         <Col xs={24} sm={12} xl={6}>
-          <MetricCard label="未关闭质量问题" value={7} suffix="项" detail="高风险 1 项，逾期 1 项" color="#c93636" icon={<SafetyCertificateOutlined />} />
+          <MetricCard label="未关闭质量问题" value={unclosed} suffix="项" detail={`高风险 ${highRiskIssues} 项`} color="#c93636" icon={<SafetyCertificateOutlined />} />
         </Col>
       </Row>
 
@@ -104,8 +124,8 @@ export default function DashboardPage() {
         <Col xs={24} xl={17}>
           <SurfaceCard
             title="重点项目业务闭环"
-            subtitle="银河 E8 智驾验证车改制 · PRJ-2026-SM-017"
-            extra={<StatusPill status="in_progress" />}
+            subtitle={`${project.name} · ${project.id}`}
+            extra={<StatusPill status={project.status} />}
           >
             <div className="process-line">
               {process.map((item, index) => (
@@ -118,10 +138,10 @@ export default function DashboardPage() {
             </div>
             <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 16 }}>
               <div>
-                <div style={{ color: "#5b6b7f", fontSize: 12 }}>当前车辆 GEELY-VH-7E001</div>
-                <div style={{ marginTop: 5, fontWeight: 700 }}>装配完成 71%，等待调拨线束到齐与孔位偏差问题复验</div>
+                <div style={{ color: "#5b6b7f", fontSize: 12 }}>当前车辆 {vehicle.uid}</div>
+                <div style={{ marginTop: 5, fontWeight: 700 }}>装配完成 {vehicle.progress}%，等待调拨线束到齐与孔位偏差问题复验</div>
               </div>
-              <Link href="/vehicles/VH-7E001">
+              <Link href={`/vehicles/${vehicle.id}`}>
                 <Button type="link" iconPosition="end" icon={<RightOutlined />}>查看一车一档</Button>
               </Link>
             </div>
@@ -136,11 +156,11 @@ export default function DashboardPage() {
               </div>
               <div className="risk-item">
                 <div className="risk-icon"><ClockCircleOutlined /></div>
-                <div><div className="risk-title">举升机 L2 存在插单冲突</div><div className="risk-detail">准备车间下午班 EX5 测量与 E8-03 插单重叠，等待生产平衡确认。</div></div>
+                <div><div className="risk-title">举升机 L2 存在插单冲突</div><div className="risk-detail">{state.scheduleRows.some((row) => row.status === "warning") ? "准备车间下午班 EX5 测量与 E8-03 插单重叠，等待生产平衡确认。" : "冲突已通过采纳建议解决，排程恢复健康。"}</div></div>
               </div>
               <div className="risk-item">
                 <div className="risk-icon"><SafetyCertificateOutlined /></div>
-                <div><div className="risk-title">高风险质量问题待复验</div><div className="risk-detail">前舱支架孔位偏差已整改，未复验前不得进入终检。</div></div>
+                <div><div className="risk-title">{unclosed} 项质量问题待复验</div><div className="risk-detail">前舱支架孔位偏差已整改，未复验前不得进入终检。</div></div>
               </div>
             </div>
           </SurfaceCard>
@@ -154,11 +174,10 @@ export default function DashboardPage() {
             subtitle="按项目、车型、车间和风险统一查看"
             extra={<Link href="/projects"><Button type="link">查看全部</Button></Link>}
           >
-            <Table columns={projectColumns} dataSource={projects} rowKey="id" pagination={false} scroll={{ x: 780 }} size="middle" />
+            <Table columns={projectColumns} dataSource={state.projects} rowKey="id" pagination={false} scroll={{ x: 780 }} size="middle" />
           </SurfaceCard>
         </Col>
       </Row>
     </>
   );
 }
-

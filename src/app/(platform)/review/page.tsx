@@ -1,28 +1,29 @@
 "use client";
 
 import { CheckCircleOutlined, FilePdfOutlined, LockOutlined, MessageOutlined } from "@ant-design/icons";
-import { Alert, Button, Col, List, message, Progress, Row, Space, Table, Tag, Timeline } from "antd";
+import { Alert, Button, Col, List, Modal, Progress, Row, Space, Table, Tag, Timeline, message } from "antd";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { SurfaceCard } from "@/components/surface-card";
-import { reviewPages } from "@/lib/demo-data";
+import { useDemoStore } from "@/lib/demo-store";
 
 export default function ReviewPage() {
-  const [pages, setPages] = useState(reviewPages);
-  const [frozen, setFrozen] = useState(false);
+  const { state, dispatch } = useDemoStore();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const pages = state.reviewPages;
   const openComments = pages.reduce((sum, item) => sum + item.comments, 0);
   const passRate = useMemo(() => Math.round((pages.filter((item) => item.status === "passed").length / pages.length) * 100), [pages]);
 
   const closeOne = () => {
     const target = pages.find((item) => item.comments > 0);
     if (!target) return;
-    setPages((items) => items.map((item) => item.page === target.page ? { ...item, comments: item.comments - 1, status: item.comments - 1 === 0 ? "passed" : item.status } : item));
+    dispatch({ type: "CLOSE_REVIEW_COMMENT" });
     message.success(`已关闭第 ${target.page} 页一条评审意见`);
   };
 
   const freeze = () => {
-    setFrozen(true);
+    dispatch({ type: "FREEZE_VERSION" });
     message.success("方案 V4.0 已冻结并生成现场发布版本");
   };
 
@@ -31,13 +32,13 @@ export default function ReviewPage() {
       <PageHeader
         title="方案评审与版本冻结"
         description="结构化字段与原始附件共同构成完整方案；页级意见必须闭环后，才能冻结为生产执行依据。"
-        actions={<Space><Button icon={<FilePdfOutlined />}>查看 V3.0 执行版</Button><Button type="primary" icon={<LockOutlined />} disabled={openComments > 0 || frozen} onClick={freeze}>{frozen ? "V4.0 已冻结" : "冻结 V4.0"}</Button></Space>}
+        actions={<Space><Button icon={<FilePdfOutlined />} onClick={() => setPreviewOpen(true)}>查看 V3.0 执行版</Button><Button type="primary" icon={<LockOutlined />} disabled={openComments > 0 || state.versionFrozen} onClick={freeze}>{state.versionFrozen ? "V4.0 已冻结" : "冻结 V4.0"}</Button></Space>}
       />
 
       <Alert
-        type={frozen ? "success" : "warning"}
+        type={state.versionFrozen ? "success" : "warning"}
         showIcon
-        message={frozen ? "V4.0 已冻结，可发布到工位" : `V4.0 仍有 ${openComments} 条未关闭意见，不可发布到现场`}
+        message={state.versionFrozen ? "V4.0 已冻结，可发布到工位" : `V4.0 仍有 ${openComments} 条未关闭意见，不可发布到现场`}
         description="当前生产任务继续引用 V3.0 冻结版；V4.0 变更涉及拆换件清单与计划窗口，冻结后将触发物料和排产影响确认。"
         style={{ marginBottom: 14 }}
       />
@@ -69,7 +70,7 @@ export default function ReviewPage() {
             <Timeline
               items={[
                 { color: "green", children: <div><b>V3.0 · 生产执行版</b><div className="section-subtitle">07-16 冻结 · 现场正在引用</div></div> },
-                { color: frozen ? "green" : "blue", children: <div><b>V4.0 · 变更评审版</b><div className="section-subtitle">拆换件与计划窗口调整</div></div> },
+                { color: state.versionFrozen ? "green" : "blue", children: <div><b>V4.0 · 变更评审版</b><div className="section-subtitle">拆换件与计划窗口调整</div></div> },
                 { color: "gray", children: <div><b>V2.0 · 历史版本</b><div className="section-subtitle">07-12 冻结，已被 V3 替代</div></div> },
               ]}
             />
@@ -82,7 +83,21 @@ export default function ReviewPage() {
           </SurfaceCard>
         </Col>
       </Row>
+
+      <Modal title="V3.0 执行版 · 只读预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} footer={<Button onClick={() => setPreviewOpen(false)}>关闭</Button>} width={640}>
+        <List
+          size="small"
+          dataSource={pages.map((item) => ({ ...item }))}
+          renderItem={(item) => (
+            <List.Item>
+              <div style={{ width: "100%", display: "flex", justifyContent: "space-between" }}>
+                <span>P{String(item.page).padStart(2, "0")} · {item.title}</span>
+                <Tag color="green">已冻结通过</Tag>
+              </div>
+            </List.Item>
+          )}
+        />
+      </Modal>
     </>
   );
 }
-
