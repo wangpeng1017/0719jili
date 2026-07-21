@@ -4,10 +4,12 @@ import {
   AppstoreOutlined,
   ApartmentOutlined,
   AuditOutlined,
+  BarChartOutlined,
   BellOutlined,
   CarOutlined,
   ControlOutlined,
   DashboardOutlined,
+  DatabaseOutlined,
   FileProtectOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
@@ -17,8 +19,10 @@ import {
   ProjectOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
+  ScheduleOutlined,
   SearchOutlined,
   SendOutlined,
+  TeamOutlined,
   ToolOutlined,
 } from "@ant-design/icons";
 import { App, Avatar, Badge, Button, Drawer, Input, Layout, Menu, Popconfirm, Popover, Space, Tooltip } from "antd";
@@ -35,19 +39,50 @@ type NavItem = { key: string; icon: React.ReactNode; label: string; children?: N
 const navigation: NavItem[] = [
   { key: "/dashboard", icon: <DashboardOutlined />, label: "管理驾驶舱" },
   { key: "/demands", icon: <SendOutlined />, label: "需求承接" },
-  { key: "/projects", icon: <ProjectOutlined />, label: "项目与任务" },
+  {
+    key: "project-group",
+    icon: <ProjectOutlined />,
+    label: "项目管理",
+    children: [
+      { key: "/projects", label: "项目列表" },
+      { key: "/projects/wbs", label: "WBS 分解" },
+      { key: "/projects/board", label: "项目看板" },
+    ],
+  },
   { key: "/review", icon: <AuditOutlined />, label: "方案评审" },
-  { key: "/schedule", icon: <ApartmentOutlined />, label: "计划与排产" },
-  { key: "/materials", icon: <AppstoreOutlined />, label: "物料与追溯" },
+  {
+    key: "schedule-group",
+    icon: <ApartmentOutlined />,
+    label: "计划排产",
+    children: [
+      { key: "/schedule", label: "日调度板" },
+      { key: "/schedule/plan", label: "周/月计划" },
+      { key: "/schedule/capacity", label: "产能模型" },
+      { key: "/schedule/gantt", label: "排产甘特图" },
+    ],
+  },
+  {
+    key: "production-group",
+    icon: <ScheduleOutlined />,
+    label: "生产管理",
+    children: [
+      { key: "/production/orders", label: "工单管理" },
+      { key: "/production", label: "生产执行" },
+      { key: "/production/wip", label: "在制品跟踪" },
+      { key: "/production/exceptions", label: "异常与返工" },
+      { key: "/production/board", label: "生产看板" },
+    ],
+  },
   {
     key: "process-group",
     icon: <PartitionOutlined />,
-    label: "工艺工序",
+    label: "工艺管理",
     children: [
       { key: "/process", label: "工艺路线" },
       { key: "/process/sop", label: "作业指导书" },
-      { key: "/production", label: "生产执行" },
-      { key: "/production/exceptions", label: "异常与返工" },
+      { key: "/process/bom", label: "改制 BOM" },
+      { key: "/process/ecn", label: "工艺变更" },
+      { key: "/process/tooling", label: "工装夹具" },
     ],
   },
   { key: "/workshop", icon: <ToolOutlined />, label: "数字工位" },
@@ -58,11 +93,55 @@ const navigation: NavItem[] = [
     children: [
       { key: "/quality", label: "质量闭环" },
       { key: "/quality/inspection", label: "质量检验" },
+      { key: "/quality/spc", label: "SPC 统计" },
+      { key: "/quality/cost", label: "质量成本" },
+    ],
+  },
+  {
+    key: "material-group",
+    icon: <AppstoreOutlined />,
+    label: "物料管理",
+    children: [
+      { key: "/materials", label: "齐套与配送" },
+      { key: "/materials/inventory", label: "库存台账" },
+      { key: "/materials/trace", label: "批次追溯" },
+      { key: "/materials/shortage", label: "缺件催料" },
+    ],
+  },
+  {
+    key: "equipment-group",
+    icon: <DatabaseOutlined />,
+    label: "设备管理",
+    children: [
+      { key: "/equipment", label: "设备台账" },
+      { key: "/equipment/maintenance", label: "点检保养" },
+      { key: "/equipment/repair", label: "维修工单" },
+      { key: "/equipment/oee", label: "OEE 分析" },
+    ],
+  },
+  {
+    key: "personnel-group",
+    icon: <TeamOutlined />,
+    label: "人员班组",
+    children: [
+      { key: "/personnel/skills", label: "技能矩阵" },
+      { key: "/personnel/shift", label: "排班管理" },
+      { key: "/personnel/hours", label: "工时统计" },
     ],
   },
   { key: "/delivery", icon: <FileProtectOutlined />, label: "交付归档" },
   { key: "/vehicles/VH-7E001", icon: <CarOutlined />, label: "一车一档" },
   { key: "/integrations", icon: <ControlOutlined />, label: "集成中心" },
+  {
+    key: "report-group",
+    icon: <BarChartOutlined />,
+    label: "报表中心",
+    children: [
+      { key: "/reports/production", label: "生产报表" },
+      { key: "/reports/quality", label: "质量报表" },
+      { key: "/reports/custom", label: "自定义查询" },
+    ],
+  },
 ];
 
 function NavigationMenu({ selectedKey, close }: { selectedKey: string; close?: () => void }) {
@@ -72,7 +151,7 @@ function NavigationMenu({ selectedKey, close }: { selectedKey: string; close?: (
       theme="dark"
       mode="inline"
       selectedKeys={[selectedKey]}
-      defaultOpenKeys={["process-group", "quality-group"]}
+      defaultOpenKeys={["project-group", "schedule-group", "production-group", "process-group", "quality-group", "material-group", "equipment-group", "personnel-group", "report-group"]}
       items={navigation.map((item) =>
         item.children
           ? {
